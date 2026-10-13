@@ -115,6 +115,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .lb li .rk { font-family: 'Luckiest Guy', sans-serif; font-size: 18px; text-align: center; }
 .lb li:nth-child(1) .rk { color: #ffd23f; } .lb li:nth-child(2) .rk { color: #d8d8e8; } .lb li:nth-child(3) .rk { color: #e08a4a; }
 .lb li .nm { font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lb li .tag { color: var(--muted); font-weight: 600; font-size: 12px; letter-spacing: 1px; }
 .lb li .sc { font-family: 'Luckiest Guy', sans-serif; color: #ffd23f; font-size: 18px; }
 .lb li.me { outline: 2px solid var(--green); }
 .lb .empty { display: block; text-align: center; color: var(--muted); }

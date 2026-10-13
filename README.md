@@ -26,19 +26,36 @@ awake during a round (where the browser allows it). Rendering is automatically l
 before a player's first game; on phones the first card lets them practise a swipe. It can be
 reopened any time from **How to play** on the start screen.
 
-### Rules & scoring (from the campaign brief)
+### Rules
 
 | Rule | Value |
 | --- | --- |
 | Round length | 60 seconds |
 | Lives | 3 (touching a monster removes one, then 2 s of invulnerability) |
-| Each pack collected | 10 points |
-| Collect all five products | +50 bonus (once per round) |
-| Each life left when time runs out | +20 bonus |
 | Game ends | when time runs out or all lives are lost |
 
-Packs keep re-appearing around the maze, balanced across the five flavours. Players can play
-again as often as they like — the leaderboard keeps each player's **best** score.
+### Scoring
+
+The brief's base points plus skill points, so scores spread out and players rarely tie:
+
+| Source | Points |
+| --- | --- |
+| Each pack | 10 |
+| Combo — packs grabbed within 2.5 s of each other | ×1.25 → ×1.5 → ×1.75 → ×2 (max) |
+| Speed — a pack grabbed soon after it appears | +5, dropping by 1 every 2 s it lies there |
+| Near miss — a skeleton gets close and you escape without being touched (once per skeleton per 3 s) | +5 |
+| Every complete set of all five flavours (repeatable) | +50 |
+| Every second survived | +2 |
+| Each life left when time runs out | +20 |
+
+**Ranking is always unique:** score → most packs → most lives left → longest survival →
+whoever submitted that score first. All numbers live in `SCORING` in [`js/config.js`](js/config.js);
+the server imports the same file, so changing them there updates validation too.
+
+**One entry per player:** submitting requires a Sri Lankan mobile number
+(`07X XXX XXXX`, `+94 7X…` etc.). Each number has one leaderboard entry — their best score
+for the period — shown under their latest name with the last digits masked (`SpookySam ••567`)
+so players with the same name can be told apart. Players can return and improve their score.
 
 ## Running it
 
@@ -56,7 +73,7 @@ Environment variables:
 | `PORT` | `8080` | HTTP port |
 | `DATA_DIR` | `./data` | Where `scores.json` is stored |
 | `TZ_OFFSET_MIN` | `330` | Time zone for daily/weekly resets (330 = Sri Lanka, UTC+05:30). Weeks start Monday. |
-| `ADMIN_KEY` | *(unset)* | Enables `GET /api/admin/winners?period=daily\|weekly\|all&key=…` which returns the top 50 **including mobile numbers** for contacting winners |
+| `ADMIN_KEY` | *(unset)* | Enables the winners export (see below) |
 
 Append `?low` to the URL to force the low-graphics mode (the game also switches to it
 automatically on slow devices).
@@ -107,16 +124,30 @@ holding the leaderboard.
 | Method | Path | Description |
 | --- | --- | --- |
 | `POST` | `/api/session` | Starts a game session (called when a round starts) |
-| `GET` | `/api/leaderboard?period=daily\|weekly\|all&limit=10` | Best score per player for the period |
-| `POST` | `/api/scores` | `{ session, name, phone?, score, packs, livesLeft, flavours, reason }` |
+| `GET` | `/api/leaderboard?period=daily\|weekly\|all&limit=10` | Ranked best entry per mobile number: `{ rank, name, tag, score, packs }` (no phone numbers) |
+| `POST` | `/api/scores` | `{ session, name, phone, reason, packs, flavourCounts, packPoints, comboPoints, speedPoints, nearMisses, sets, survivedSec, livesLeft, score }` → `{ rank, best, improved }` |
 
-Basic anti-cheat: each session can submit once, the server recomputes the score from its
-parts, checks the round actually lasted 60 s when time ran out, and caps how many packs could
-physically have been collected. A determined cheater can still forge a browser game's
-requests — before awarding prizes, sanity-check the top entries (e.g. via the admin endpoint).
+### Picking winners
 
-Mobile numbers are optional, never returned by the public leaderboard and only exposed by the
-admin endpoint. Make sure the campaign's privacy notice covers collecting them.
+```
+GET /api/admin/winners?period=daily&limit=5&format=csv&key=YOUR_ADMIN_KEY
+```
+
+Downloads the ranked top N (`period` = `daily`, `weekly` or `all`; `format` = `csv` or `json`)
+with each winner's **full mobile number**, name, score and full breakdown — ready for the prize
+team. Days and weeks follow `TZ_OFFSET_MIN` (Sri Lanka time by default), weeks start Monday.
+
+### Anti-cheat
+
+Each session can submit once. The server recomputes the total from the breakdown and
+bounds-checks every part (packs = sum of flavours, sets = complete flavour sets, combo/speed
+points within their maximum, near misses within what five skeletons could give, the round
+can't finish faster than real time, and a cap on how fast packs can be collected). A
+determined cheater can still forge a browser game's requests — sanity-check the top entries
+before awarding prizes.
+
+Mobile numbers are never returned by the public leaderboard, only by the admin export. Make
+sure the campaign's privacy notice covers collecting them.
 
 ## Customising
 

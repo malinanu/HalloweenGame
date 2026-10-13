@@ -13,8 +13,8 @@ const SCORES_FILE = path.join(DATA_DIR, 'scores.json');
 const TZ_OFFSET_MIN = Number(process.env.TZ_OFFSET_MIN ?? 330);
 const ADMIN_KEY = process.env.ADMIN_KEY || '';
 
-// Must match js/config.js
-const RULES = { durationSec: 60, perPack: 10, allFive: 50, perLife: 20, lives: 3 };
+// Scoring/ranking rules come from the game's own modules (loaded at startup) so client and server never drift.
+let RULES, scoring;
 const MAX_PACKS_PER_SEC = 1.6; // generous upper bound on how fast packs can physically be collected
 
 const MIME = {
@@ -53,17 +53,12 @@ function periodStart(period, now = Date.now()) {
   return local.getTime() - TZ_OFFSET_MIN * 60000;
 }
 
-function board(period, limit) {
-  const since = periodStart(period);
-  const best = new Map();
-  for (const s of scores) {
-    if (s.ts < since) continue;
-    const k = s.name.toLowerCase();
-    const cur = best.get(k);
-    if (!cur || s.score > cur.score || (s.score === cur.score && s.ts < cur.ts)) best.set(k, s);
-  }
-  return [...best.values()].sort((a, b) => b.score - a.score || a.ts - b.ts).slice(0, limit);
+// One entry per mobile number (their best), strictly ranked — see js/scoring.js.
+function board(period) {
+  return scoring.rankBoard(scores, periodStart(period));
 }
+
+const publicEntry = (e) => ({ rank: e.rank, name: e.name, tag: scoring.mobileTag(e.phone), score: e.score, packs: e.packs });
 
 function send(res, status, body, headers = {}) {
   const data = typeof body === 'string' || Buffer.isBuffer(body) ? body : JSON.stringify(body);
@@ -82,24 +77,31 @@ function readBody(req) {
 
 const clientIp = (req) => (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress;
 
-// Recompute the score from its parts so a tampered total is rejected.
+// Recompute the score from its breakdown and bounds-check every part (js/scoring.js).
+const BREAKDOWN_KEYS = ['reason', 'packs', 'flavourCounts', 'packPoints', 'comboPoints', 'speedPoints', 'nearMisses', 'sets', 'survivedSec', 'livesLeft', 'score'];
 function validate(body, session) {
   const name = String(body.name || '').trim().replace(/\s+/g, ' ');
   if (name.length < 2 || name.length > 16) return 'Name must be 2–16 characters.';
   if (!/^[\p{L}\p{N} _.\-']+$/u.test(name)) return 'Name can only use letters, numbers, spaces and . _ - \'';
-  const phone = String(body.phone || '').replace(/[^\d+]/g, '');
-  if (phone && (phone.length < 9 || phone.length > 15)) return 'Please enter a valid mobile number.';
-  const packs = Number(body.packs), lives = Number(body.livesLeft), flavours = Number(body.flavours);
-  const score = Number(body.score);
-  if (![packs, lives, flavours, score].every(Number.isInteger)) return 'Invalid score.';
-  if (packs < 0 || lives < 0 || lives > RULES.lives || flavours < 0 || flavours > 5 || flavours > packs) return 'Invalid score.';
-  const timeUp = body.reason === 'time';
-  const expected = packs * RULES.perPack + (flavours === 5 ? RULES.allFive : 0) + (timeUp ? lives * RULES.perLife : 0);
-  if (score !== expected) return 'Invalid score.';
+  const phone = scoring.normalizeMobile(body.phone);
+  if (!phone) return 'Please enter a valid Sri Lankan mobile number (07X XXX XXXX).';
+  const b = Object.fromEntries(BREAKDOWN_KEYS.map((k) => [k, body[k]]));
+  const problem = scoring.checkBreakdown(b);
+  if (problem) { console.warn(`Rejected score from ${session.ip}: ${problem}`); return 'Invalid score.'; }
   const elapsed = (Date.now() - session.started) / 1000;
-  if (timeUp && elapsed < RULES.durationSec - 2) return 'Invalid score.';
-  if (packs > Math.ceil(Math.min(elapsed, RULES.durationSec + 5) * MAX_PACKS_PER_SEC)) return 'Invalid score.';
-  return { name, phone, packs, lives, flavours, score };
+  if (elapsed < b.survivedSec - 2) return 'Invalid score.';
+  if (b.packs > Math.ceil(Math.min(elapsed, RULES.durationSec + 5) * MAX_PACKS_PER_SEC)) return 'Invalid score.';
+  return { name, phone, ...b };
+}
+
+// `textCols`: indexes of player-typed columns that get formula-injection protection.
+function toCsv(rows, textCols = []) {
+  const cell = (v, i) => {
+    let t = String(v ?? '');
+    if (textCols.includes(i) && /^[=+\-@]/.test(t)) t = `'${t}`; // keep spreadsheet apps from running formulas
+    return /[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t;
+  };
+  return rows.map((r) => r.map(cell).join(',')).join('\n') + '\n';
 }
 
 // ------------------------------------------------------------------ API
@@ -113,7 +115,7 @@ async function api(req, res, url) {
   if (req.method === 'GET' && url.pathname === '/api/leaderboard') {
     const period = ['daily', 'weekly', 'all'].includes(url.searchParams.get('period')) ? url.searchParams.get('period') : 'daily';
     const limit = Math.min(50, Math.max(1, Number(url.searchParams.get('limit')) || 10));
-    return send(res, 200, { period, entries: board(period, limit).map(({ name, score, ts }) => ({ name, score, ts })) });
+    return send(res, 200, { period, entries: board(period).slice(0, limit).map(publicEntry) });
   }
 
   if (req.method === 'POST' && url.pathname === '/api/scores') {
@@ -124,18 +126,29 @@ async function api(req, res, url) {
     const v = validate(body, session);
     if (typeof v === 'string') return send(res, 400, { error: v });
     sessions.delete(String(body.session)); // one submission per game
-    const entry = { name: v.name, score: v.score, packs: v.packs, livesLeft: v.lives, flavours: v.flavours, phone: v.phone || undefined, ip: session.ip, ts: Date.now() };
+    const entry = { ...v, ip: session.ip, ts: Date.now() };
     scores.push(entry);
     save();
-    const rank = board('daily', 100000).findIndex((e) => e.name.toLowerCase() === v.name.toLowerCase()) + 1;
-    return send(res, 200, { ok: true, rank });
+    const today = board('daily');
+    const mine = today.find((e) => e.phone === v.phone);
+    return send(res, 200, { ok: true, rank: mine.rank, best: mine.score, improved: mine.ts === entry.ts, tag: scoring.mobileTag(v.phone) });
   }
 
-  // Organiser export of winners incl. contact numbers: GET /api/admin/winners?period=daily&key=ADMIN_KEY
+  // Organiser export of winners incl. contact numbers:
+  //   GET /api/admin/winners?period=daily|weekly|all&limit=5&format=json|csv&key=ADMIN_KEY
   if (req.method === 'GET' && url.pathname === '/api/admin/winners') {
     if (!ADMIN_KEY || url.searchParams.get('key') !== ADMIN_KEY) return send(res, 403, { error: 'Forbidden' });
-    const period = url.searchParams.get('period') || 'daily';
-    return send(res, 200, { period, since: new Date(periodStart(period)).toISOString(), entries: board(period, 50) });
+    const period = ['daily', 'weekly', 'all'].includes(url.searchParams.get('period')) ? url.searchParams.get('period') : 'daily';
+    const limit = Math.min(500, Math.max(1, Number(url.searchParams.get('limit')) || 5));
+    const top = board(period).slice(0, limit).map(({ ip, ...e }) => ({ ...e, mobile: `+${e.phone}`, submittedAt: new Date(e.ts).toISOString() }));
+    if (url.searchParams.get('format') === 'csv') {
+      const cols = ['rank', 'name', 'mobile', 'score', 'packs', 'packPoints', 'comboPoints', 'speedPoints', 'nearMisses', 'sets', 'survivedSec', 'livesLeft', 'reason', 'submittedAt'];
+      return send(res, 200, toCsv([cols, ...top.map((e) => cols.map((c) => e[c]))], [cols.indexOf('name')]), {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': `attachment; filename="maliban-${period}-top${limit}.csv"`,
+      });
+    }
+    return send(res, 200, { period, since: new Date(periodStart(period)).toISOString(), entries: top });
   }
 
   return send(res, 404, { error: 'Not found' });
@@ -164,13 +177,17 @@ function serveStatic(req, res, url) {
   });
 }
 
-http.createServer((req, res) => {
-  const url = new URL(req.url, 'http://localhost');
-  if (url.pathname.startsWith('/api/')) {
-    api(req, res, url).catch((e) => { console.error(e); send(res, 500, { error: 'Server error' }); });
-  } else if (req.method === 'GET' || req.method === 'HEAD') {
-    serveStatic(req, res, url);
-  } else {
-    send(res, 405, { error: 'Method not allowed' });
-  }
-}).listen(PORT, () => console.log(`Maliban Savoury Maze running at http://localhost:${PORT}`));
+(async () => {
+  ({ RULES } = await import('./js/config.js'));
+  scoring = await import('./js/scoring.js');
+  http.createServer((req, res) => {
+    const url = new URL(req.url, 'http://localhost');
+    if (url.pathname.startsWith('/api/')) {
+      api(req, res, url).catch((e) => { console.error(e); send(res, 500, { error: 'Server error' }); });
+    } else if (req.method === 'GET' || req.method === 'HEAD') {
+      serveStatic(req, res, url);
+    } else {
+      send(res, 405, { error: 'Method not allowed' });
+    }
+  }).listen(PORT, () => console.log(`Maliban Savoury Maze running at http://localhost:${PORT}`));
+})();

@@ -1,4 +1,5 @@
 import { API_BASE } from './config.js';
+import { rankBoard, normalizeMobile, mobileTag } from './scoring.js';
 
 // Talks to server.js. When the game is hosted as plain static files (no API),
 // it falls back to a leaderboard stored in this browser so the game still works.
@@ -49,12 +50,14 @@ export async function submitScore(payload) {
       serverAvailable = false;
     }
   }
+  const phone = normalizeMobile(payload.phone);
+  const entry = { ...payload, phone, ts: Date.now() };
+  delete entry.session;
   const list = readLocal();
-  list.push({ name: payload.name, score: payload.score, ts: Date.now() });
+  list.push(entry);
   writeLocal(list);
-  const board = localBoard('daily', 1000);
-  const rank = board.findIndex((e) => e.name.toLowerCase() === payload.name.toLowerCase()) + 1;
-  return { ok: true, rank, source: 'local' };
+  const mine = rankBoard(list, periodStart('daily')).find((e) => e.phone === phone);
+  return { ok: true, rank: mine.rank, best: mine.score, improved: mine.ts === entry.ts, tag: mobileTag(phone), source: 'local' };
 }
 
 function periodStart(period) {
@@ -69,15 +72,8 @@ function periodStart(period) {
 }
 
 function localBoard(period, limit) {
-  const since = periodStart(period);
-  const best = new Map();
-  for (const s of readLocal()) {
-    if (s.ts < since) continue;
-    const k = s.name.toLowerCase();
-    if (!best.has(k) || best.get(k).score < s.score) best.set(k, s);
-  }
-  return [...best.values()].sort((a, b) => b.score - a.score || a.ts - b.ts).slice(0, limit)
-    .map((e) => ({ name: e.name, score: e.score }));
+  return rankBoard(readLocal(), periodStart(period)).slice(0, limit)
+    .map((e) => ({ rank: e.rank, name: e.name, tag: mobileTag(e.phone), score: e.score, packs: e.packs }));
 }
 
 function readLocal() {

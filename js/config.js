@@ -7,10 +7,22 @@ export const RULES = {
   packRespawnSec: 1.2,     // delay before a collected pack re-appears elsewhere
 };
 
+// Scoring. The brief's base (10 per pack, +20 per life left) plus skill points so scores
+// spread out and players rarely tie. server.js imports this file, so the server always
+// validates with the same numbers.
 export const SCORING = {
   perPack: 10,
-  allFiveBonus: 50,        // awarded once, the first time all five products are collected
-  perLifeLeft: 20,         // awarded at the end of the round
+  comboWindowSec: 2.5,     // next pack within this many seconds keeps the combo going
+  comboStep: 0.25,         // multiplier grows x1.25, x1.5, x1.75 ...
+  comboMax: 2,             // ... up to x2
+  speedBonusMax: 5,        // fresh pack = +5, then -1 every speedDecaySec seconds it was left lying
+  speedDecaySec: 2,
+  nearMiss: 5,             // a skeleton came close and you got away
+  nearMissRadius: 2.8,     // world units (cell = 4); hit radius is 1.55
+  nearMissCooldownSec: 3,  // per skeleton
+  flavourSet: 50,          // every complete set of all five flavours (repeatable)
+  perSecondSurvived: 2,
+  perLifeLeft: 20,         // only when the timer runs out
 };
 
 // The five Maliban savoury products. Swap names/colours to match the real range.

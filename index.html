@@ -97,17 +97,17 @@
         <div class="tut-card">
           <div class="tut-art packs-art" id="tut-packs"></div>
           <h2 class="title">Collect the packs</h2>
-          <p>Every Maliban pack is <b id="tut-pack-pts"></b>. Grab <b>all five flavours</b> for a <b id="tut-five-pts"></b> bonus!</p>
+          <p>Every Maliban pack is <b id="tut-pack-pts"></b>. Grab them <b>quickly one after another</b> for combo points, and every <b>set of all five flavours</b> earns <b id="tut-five-pts"></b>!</p>
         </div>
         <div class="tut-card">
           <div class="tut-art"><span class="big-emoji wobble">💀</span></div>
           <h2 class="title">Dodge the skeletons</h2>
-          <p>Five monsters roam the maze. You have <b>3 lives</b> — each touch costs one.</p>
+          <p>Five monsters roam the maze. You have <b>3 lives</b> — each touch costs one. Slip past one up close for a <b id="tut-near-pts"></b> near-miss bonus!</p>
         </div>
         <div class="tut-card">
           <div class="tut-art"><span class="big-emoji">⏱️</span></div>
           <h2 class="title">Survive 60 seconds</h2>
-          <p>Every life left at the end is worth <b id="tut-life-pts"></b>. Then submit your score and climb the leaderboard!</p>
+          <p>Every second survived scores <b id="tut-sec-pts"></b> and every life left at the end <b id="tut-life-pts"></b>. Then submit your score and climb the leaderboard!</p>
         </div>
       </div>
       <div class="tut-dots" id="tut-dots"></div>
@@ -130,11 +130,8 @@
         <li>Submit your final score to the leaderboard. Come back any time to beat it!</li>
       </ul>
       <h2 class="title">Scoring</h2>
-      <div class="score-table">
-        <div><span>Each pack collected</span><b id="r-pack"></b></div>
-        <div><span>Collect all five flavours</span><b id="r-five"></b></div>
-        <div><span>Each life left when time runs out</span><b id="r-life"></b></div>
-      </div>
+      <div class="score-table" id="rules-scoring"></div>
+      <p class="muted small">Ties are ranked by most packs, then most lives left, then longest survival, then whoever scored first.</p>
       <div class="flavour-row" id="rules-flavours"></div>
       <h2 class="title">Rewards</h2>
       <ul class="rules">
@@ -178,8 +175,8 @@
       <div class="score-table" id="over-breakdown"></div>
       <form id="submit-form" autocomplete="on">
         <label>Your name <input id="in-name" name="nickname" maxlength="16" minlength="2" required placeholder="e.g. SpookySam"></label>
-        <label>Mobile number <em>(optional — so we can contact winners)</em>
-          <input id="in-phone" name="tel" type="tel" maxlength="16" inputmode="tel" placeholder="07X XXX XXXX"></label>
+        <label>Mobile number <em>(one leaderboard entry per number — used to contact winners)</em>
+          <input id="in-phone" name="tel" type="tel" maxlength="16" inputmode="tel" autocomplete="tel" required placeholder="07X XXX XXXX"></label>
         <button class="btn big" type="submit" id="btn-submit">Submit score</button>
         <p class="msg" id="submit-msg"></p>
       </form>

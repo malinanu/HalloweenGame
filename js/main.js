@@ -3,6 +3,7 @@ import { Audio } from './audio.js';
 import { Input } from './input.js';
 import { Game } from './game.js';
 import { PRODUCTS, SCORING, RULES } from './config.js';
+import { normalizeMobile, mobileTag } from './scoring.js';
 import { startSession, fetchBoard, submitScore, personalBest, savePersonalBest } from './leaderboard.js';
 
 const $ = (s) => document.querySelector(s);
@@ -30,9 +31,16 @@ const flavourBar = $('#flavours');
 flavourBar.innerHTML = PRODUCTS.map((p) => `<i data-id="${p.id}" title="${p.name}" style="background:${p.color};color:${p.color}"></i>`).join('');
 $('#rules-flavours').innerHTML = PRODUCTS.map((p) => `<span style="background:${p.color}">${p.name}</span>`).join('');
 if (touch) $('.controls').textContent = 'Swipe anywhere to steer · tap ❚❚ to pause';
-$('#r-pack').textContent = `${SCORING.perPack} pts`;
-$('#r-five').textContent = `+${SCORING.allFiveBonus} pts`;
-$('#r-life').textContent = `+${SCORING.perLifeLeft} pts`;
+const maxMult = `×${SCORING.comboMax}`;
+$('#rules-scoring').innerHTML = [
+  ['Each pack collected', `${SCORING.perPack} pts`],
+  [`Combo: packs grabbed within ${SCORING.comboWindowSec}s of each other`, `up to ${maxMult}`],
+  ['Speed: grab a pack soon after it appears', `+${SCORING.speedBonusMax} → 0`],
+  ['Near miss: escape a skeleton up close', `+${SCORING.nearMiss}`],
+  ['Every complete set of all five flavours', `+${SCORING.flavourSet}`],
+  ['Every second survived', `+${SCORING.perSecondSurvived}`],
+  ['Each life left when time runs out', `+${SCORING.perLifeLeft}`],
+].map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('');
 
 const hooks = {
   hud({ score, time, lives, flavours }) {
@@ -101,7 +109,9 @@ let tutIndex = 0;
 let tutThen = null; // what to do when the tutorial closes
 $('#tut-packs').innerHTML = PRODUCTS.map((p) => `<i style="background:${p.color};color:${p.color}"></i>`).join('');
 $('#tut-pack-pts').textContent = `${SCORING.perPack} points`;
-$('#tut-five-pts').textContent = `+${SCORING.allFiveBonus}`;
+$('#tut-five-pts').textContent = `+${SCORING.flavourSet}`;
+$('#tut-near-pts').textContent = `+${SCORING.nearMiss}`;
+$('#tut-sec-pts').textContent = `+${SCORING.perSecondSurvived}`;
 $('#tut-life-pts').textContent = `+${SCORING.perLifeLeft} points`;
 $('#tut-dots').innerHTML = tutCards.map(() => '<i></i>').join('');
 
@@ -166,17 +176,25 @@ function gameOver(result) {
   $('#over-title').textContent = result.reason === 'time' ? "Time's up — you survived!" : 'The skeletons got you!';
   $('#over-score').textContent = result.score.toLocaleString();
   $('#over-best').textContent = result.score > best ? '★ New personal best!' : `Personal best: ${best.toLocaleString()}`;
+  const lifeBonus = result.reason === 'time' ? result.livesLeft * SCORING.perLifeLeft : 0;
   $('#over-breakdown').innerHTML = [
-    [`Packs collected (${result.packs} × ${SCORING.perPack})`, result.packPoints],
-    [`All five flavours bonus (${result.flavours}/5)`, result.flavourBonus],
-    [`Lives left bonus (${result.livesLeft} × ${SCORING.perLifeLeft})`, result.lifeBonus],
+    [`Packs (${result.packs} × ${SCORING.perPack})`, result.packs * SCORING.perPack],
+    ['Combo bonus', result.comboPoints],
+    ['Speed bonus', result.speedPoints],
+    [`Near misses (${result.nearMisses} × ${SCORING.nearMiss})`, result.nearMisses * SCORING.nearMiss],
+    [`Flavour sets (${result.sets} × ${SCORING.flavourSet})`, result.sets * SCORING.flavourSet],
+    [`Survived ${result.survivedSec}s (× ${SCORING.perSecondSurvived})`, result.survivedSec * SCORING.perSecondSurvived],
+    [`Lives left (${result.livesLeft} × ${SCORING.perLifeLeft})`, lifeBonus],
   ].map(([k, v]) => `<div><span>${k}</span><b>${v ? '+' + v : '0'}</b></div>`).join('')
     + `<div class="total"><span>Total</span><b>${result.score}</b></div>`;
   $('#submit-msg').textContent = '';
   $('#submit-msg').className = 'msg';
   $('#btn-submit').disabled = false;
   $('#submit-form').classList.toggle('hidden', result.score <= 0);
-  try { $('#in-name').value = localStorage.getItem('maliban_name') || ''; } catch { /* ignore */ }
+  try {
+    $('#in-name').value = localStorage.getItem('maliban_name') || '';
+    $('#in-phone').value = localStorage.getItem('maliban_phone') || '';
+  } catch { /* ignore */ }
   show('screen-over');
 }
 
@@ -187,20 +205,19 @@ $('#submit-form').addEventListener('submit', async (e) => {
   const phone = $('#in-phone').value.trim();
   const msg = $('#submit-msg');
   if (name.length < 2) { msg.textContent = 'Please enter a name (2–16 characters).'; msg.className = 'msg err'; return; }
+  if (!normalizeMobile(phone)) { msg.textContent = 'Please enter a valid mobile number (07X XXX XXXX).'; msg.className = 'msg err'; return; }
   $('#btn-submit').disabled = true;
   msg.textContent = 'Submitting…';
   msg.className = 'msg';
   try {
-    try { localStorage.setItem('maliban_name', name); } catch { /* ignore */ }
-    const r = await submitScore({
-      session, name, phone,
-      score: lastResult.score, packs: lastResult.packs, livesLeft: lastResult.livesLeft,
-      flavours: lastResult.flavours, reason: lastResult.reason,
-    });
+    try { localStorage.setItem('maliban_name', name); localStorage.setItem('maliban_phone', phone); } catch { /* ignore */ }
+    const r = await submitScore({ session, name, phone, ...lastResult });
     submitted = true;
-    msg.textContent = r.rank ? `Submitted! You're #${r.rank} today.` : 'Submitted!';
+    msg.textContent = r.improved
+      ? `New best! You're #${r.rank} today.`
+      : `Saved. Your best today is still ${r.best.toLocaleString()} (#${r.rank}).`;
     msg.className = 'msg ok';
-    setTimeout(() => openBoard('daily', name), 900);
+    setTimeout(() => openBoard('daily', { name, tag: mobileTag(normalizeMobile(phone)) }), 1200);
   } catch (err) {
     msg.textContent = err.message || 'Could not submit score.';
     msg.className = 'msg err';
@@ -216,11 +233,21 @@ async function renderBoard() {
   list.innerHTML = '<li class="empty">Loading…</li>';
   const { entries, source } = await fetchBoard(boardPeriod, 10);
   list.innerHTML = entries.length
-    ? entries.map((e, i) => `<li class="${highlight && e.name.toLowerCase() === highlight.toLowerCase() ? 'me' : ''}"><span class="rk">${i < 3 ? ['👑 1', '2', '3'][i] : i + 1}</span><span class="nm">${escapeHtml(e.name)}</span><span class="sc">${e.score.toLocaleString()}</span></li>`).join('')
+    ? entries.map((e) => {
+      const me = highlight && e.tag === highlight.tag && e.name.toLowerCase() === highlight.name.toLowerCase();
+      return `<li class="${me ? 'me' : ''}"><span class="rk">${e.rank === 1 ? '👑 1' : e.rank}</span><span class="nm">${escapeHtml(e.name)} <small class="tag">${escapeHtml(e.tag || '')}</small></span><span class="sc">${e.score.toLocaleString()}</span></li>`;
+    }).join('')
     : '<li class="empty">No scores yet — be the first!</li>';
-  $('#lb-note').textContent = source === 'local' ? 'Offline mode: showing scores saved on this device.' : 'Only your best score counts. Prizes for daily & weekly leaders!';
+  $('#lb-note').textContent = source === 'local' ? 'Offline mode: showing scores saved on this device.' : 'One entry per mobile number — only your best score counts. Prizes for daily & weekly leaders!';
 }
-function openBoard(period = boardPeriod, me = highlight) {
+function savedPlayer() {
+  try {
+    const name = localStorage.getItem('maliban_name');
+    const phone = normalizeMobile(localStorage.getItem('maliban_phone'));
+    return name && phone ? { name, tag: mobileTag(phone) } : null;
+  } catch { return null; }
+}
+function openBoard(period = boardPeriod, me = highlight || savedPlayer()) {
   boardPeriod = period;
   highlight = me;
   document.querySelectorAll('.tabs button').forEach((b) => b.classList.toggle('on', b.dataset.period === period));

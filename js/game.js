@@ -4,6 +4,7 @@ import { Maze } from './maze.js';
 import { World } from './world.js';
 import { VFX } from './vfx.js';
 import { Player, Monster, Pack, packLabelTexture } from './entities.js';
+import { packScore, comboMultiplier, totalScore } from './scoring.js';
 
 const HIT_RADIUS = 1.55;
 const PICK_RADIUS = 1.7;
@@ -123,6 +124,7 @@ export class Game {
     const choices = PRODUCTS.map((p, i) => i).filter((i) => counts[i] === min);
     const pi = choices[Math.floor(Math.random() * choices.length)];
     const pack = new Pack(this.world, PRODUCTS[pi], c.x, c.y, this.labels[pi]);
+    pack.bornAt = this.playTime || 0;
     this.packs.push(pack);
     this.vfx.burst(pack.group.position.clone(), { texture: 'star_06_a', count: 6, color: PRODUCTS[pi].color, speed: 2, size: 0.7, up: 1, gravity: 0, life: 0.6 });
   }
@@ -138,12 +140,20 @@ export class Game {
     this.score = 0;
     this.lives = RULES.lives;
     this.timeLeft = RULES.durationSec;
+    this.playTime = 0;          // seconds since GO
     this.collected = 0;
-    this.flavours = new Set();
-    this.allFiveAwarded = false;
+    this.flavourCounts = Object.fromEntries(PRODUCTS.map((p) => [p.id, 0]));
+    this.sets = 0;              // complete sets of all five flavours
+    this.packPoints = 0;
+    this.comboPoints = 0;
+    this.speedPoints = 0;
+    this.streak = 0;            // packs in the current combo
+    this.lastPickAt = -99;
+    this.nearMisses = 0;
+    this.near = new Map();      // monster -> { inside, lastAward }
+    this.survivedSec = 0;
+    this.lastSecTick = 99;
     this.invuln = 0;
-    this.combo = 0;
-    this.comboT = 0;
     this.input.reset();
     this.state = 'countdown';
     this.countdown = 3.2;
@@ -179,18 +189,20 @@ export class Game {
 
   finish(reason) {
     this.state = 'over';
-    const lifeBonus = reason === 'time' ? this.lives * SCORING.perLifeLeft : 0;
-    const packPoints = this.collected * SCORING.perPack;
+    const survivedSec = reason === 'time' ? RULES.durationSec : Math.min(RULES.durationSec, Math.floor(this.playTime));
     const result = {
       reason,
       packs: this.collected,
-      packPoints,
-      flavourBonus: this.allFiveAwarded ? SCORING.allFiveBonus : 0,
+      flavourCounts: { ...this.flavourCounts },
+      packPoints: this.packPoints,
+      comboPoints: this.comboPoints,
+      speedPoints: this.speedPoints,
+      nearMisses: this.nearMisses,
+      sets: this.sets,
+      survivedSec,
       livesLeft: this.lives,
-      lifeBonus,
-      score: this.score + lifeBonus,
-      flavours: this.flavours.size,
     };
+    result.score = totalScore(result);
     this.score = result.score;
     this.pushHud();
     this.audio.gameOver(reason === 'time');
@@ -258,8 +270,13 @@ export class Game {
     this.timeLeft -= dt;
     const secs = Math.ceil(this.timeLeft);
     if (secs <= 5 && secs < (this.lastSecTick ?? 99) && secs > 0) { this.lastSecTick = secs; this.audio.tick(secs === 1); }
-    this.comboT -= dt;
-    if (this.comboT <= 0) this.combo = 0;
+    this.playTime += dt;
+    // survival points tick up live, one second at a time
+    const survived = Math.min(RULES.durationSec, Math.floor(this.playTime));
+    if (survived > this.survivedSec) {
+      this.score += (survived - this.survivedSec) * SCORING.perSecondSurvived;
+      this.survivedSec = survived;
+    }
 
     // pick-ups
     const pp = this.player.mesh.position;
@@ -277,11 +294,11 @@ export class Game {
     // monsters
     this.invuln = Math.max(0, this.invuln - dt);
     this.player.mesh.visible = this.invuln <= 0 || Math.floor(this.invuln * 12) % 2 === 0;
-    if (this.invuln <= 0) {
-      for (const m of this.monsters) {
-        const mp = m.mesh.position;
-        if (Math.hypot(mp.x - pp.x, mp.z - pp.z) < HIT_RADIUS) { this.hurt(m); break; }
-      }
+    for (const m of this.monsters) {
+      const mp = m.mesh.position;
+      const d = Math.hypot(mp.x - pp.x, mp.z - pp.z);
+      if (this.invuln <= 0 && d < HIT_RADIUS) { this.hurt(m); break; }
+      this.checkNearMiss(m, d);
     }
 
     if (this.timeLeft <= 0) { this.timeLeft = 0; this.finish('time'); }
@@ -292,28 +309,55 @@ export class Game {
     pack.taken = true;
     const pos = pack.group.position.clone();
     pack.dispose();
+    const now = this.playTime;
+    this.streak = now - this.lastPickAt <= SCORING.comboWindowSec ? this.streak + 1 : 1;
+    this.lastPickAt = now;
+    const pts = packScore(this.streak, now - pack.bornAt);
     this.collected++;
-    this.combo++;
-    this.comboT = 1.6;
-    this.score += SCORING.perPack;
-    this.flavours.add(pack.product.id);
-    this.audio.pickup(this.combo);
+    this.packPoints += pts.total;
+    this.comboPoints += pts.combo;
+    this.speedPoints += pts.speed;
+    this.score += pts.total;
+    this.flavourCounts[pack.product.id]++;
+    this.audio.pickup(this.streak);
     this.hooks.haptic?.(12);
     this.vfx.play('star', pos, { scale: 3.6, fps: 40, additive: true });
     this.vfx.burst(pos, { texture: 'spark_05_a', count: 10, color: pack.product.color, speed: 5, size: 0.7 });
-    this.hooks.popup(`+${SCORING.perPack}`, pos, this.camera, pack.product.color);
-    if (!this.allFiveAwarded && this.flavours.size === PRODUCTS.length) {
-      this.allFiveAwarded = true;
-      this.score += SCORING.allFiveBonus;
+    const mult = comboMultiplier(this.streak);
+    this.hooks.popup(`+${pts.total}${mult > 1 ? ` ×${mult}` : ''}`, pos, this.camera, pack.product.color);
+
+    const sets = Math.min(...Object.values(this.flavourCounts));
+    if (sets > this.sets) {
+      this.sets = sets;
+      this.score += SCORING.flavourSet;
       this.audio.bonus();
       this.hooks.haptic?.([20, 30, 20, 30, 40]);
-      this.hooks.toast(`ALL 5 FLAVOURS! +${SCORING.allFiveBonus}`, 'bonus');
+      this.hooks.toast(`FLAVOUR SET${sets > 1 ? ` ×${sets}` : ''}! +${SCORING.flavourSet}`, 'bonus');
       this.vfx.play('wavy', this.player.mesh.position.clone().setY(1.2), { scale: 7, fps: 30 });
     }
     this.pendingPacks.push({ t: RULES.packRespawnSec });
   }
 
+  // A near miss is scored when a skeleton gets close and then moves away without touching you.
+  checkNearMiss(monster, dist) {
+    let n = this.near.get(monster);
+    if (!n) this.near.set(monster, (n = { inside: false, lastAward: -99 }));
+    if (dist < SCORING.nearMissRadius) {
+      if (this.invuln <= 0) n.inside = true;
+      return;
+    }
+    if (!n.inside) return;
+    n.inside = false;
+    if (this.playTime - n.lastAward < SCORING.nearMissCooldownSec) return;
+    n.lastAward = this.playTime;
+    this.nearMisses++;
+    this.score += SCORING.nearMiss;
+    this.hooks.haptic?.(8);
+    this.hooks.popup(`NEAR MISS +${SCORING.nearMiss}`, this.player.mesh.position.clone().setY(2.2), this.camera, '#7dffb0');
+  }
+
   hurt(monster) {
+    for (const n of this.near.values()) n.inside = false;
     this.lives--;
     this.invuln = RULES.invulnerableSec;
     this.shake = 0.6;
@@ -335,7 +379,7 @@ export class Game {
   }
 
   pushHud() {
-    this.hooks.hud({ score: this.score ?? 0, time: Math.max(0, this.timeLeft ?? RULES.durationSec), lives: this.lives ?? RULES.lives, flavours: this.flavours ? [...this.flavours] : [] });
+    this.hooks.hud({ score: this.score ?? 0, time: Math.max(0, this.timeLeft ?? RULES.durationSec), lives: this.lives ?? RULES.lives, flavours: this.flavourCounts ? Object.keys(this.flavourCounts).filter((k) => this.flavourCounts[k] > this.sets) : [] });
   }
 
   // ------------------------------------------------------------ camera
