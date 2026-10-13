@@ -54,8 +54,9 @@ jobs:
         env:
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
         run: |
-          # --delete keeps the server in sync, but never touches the leaderboard data or server-side .env
-          rsync -az --delete \
+          # --delete keeps the server in sync, but never touches the leaderboard data or server-side .env.
+          # No -a: the site root is owned by CloudPanel, so we must not try to set its times/perms/owner.
+          rsync -rlz --times --omit-dir-times --no-perms --no-owner --no-group --delete \
             --exclude '.git/' --exclude '.github/' --exclude 'node_modules/' \
             --exclude 'data/' --exclude '.env' \
             ./ "cloudpanel:$DEPLOY_PATH/"
