@@ -33,7 +33,7 @@ again as often as they like — the leaderboard keeps each player's **best** sco
 
 ## Running it
 
-Requires Node.js 18+ (no `npm install` needed — zero dependencies).
+Requires Node.js 24 LTS (no `npm install` needed — zero dependencies).
 
 ```bash
 npm start            # or: node server.js
@@ -65,7 +65,7 @@ put it behind HTTPS.
 (or manually from **Actions → Deploy to CloudPanel → Run workflow**). It syntax-checks the code,
 rsyncs the files over SSH, (re)starts the app with PM2 and checks it responds.
 
-**1. On CloudPanel:** *Add Site → Create a Node.js Site*, pick a Node version and an **App Port**
+**1. On CloudPanel:** *Add Site → Create a Node.js Site*, pick **Node.js 24** and an **App Port**
 (e.g. `3087` — pick one no other app uses; check with `ss -tlnp`). Note the site user and the site root, e.g. `/home/maliban/htdocs/game.example.com`.
 Enable Let's Encrypt for HTTPS.
 

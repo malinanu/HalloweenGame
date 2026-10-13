@@ -18,7 +18,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
 
       - name: Syntax check
         run: |
@@ -69,7 +69,8 @@ jobs:
           set -e
           cd "$DEPLOY_PATH"
           export NVM_DIR="$HOME/.nvm"
-          [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+          [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && nvm use 24 >/dev/null
+          echo "Node $(node -v)"
           command -v pm2 >/dev/null || npm install -g pm2
           mkdir -p data
           PORT="$APP_PORT" pm2 startOrReload ecosystem.config.cjs --update-env
