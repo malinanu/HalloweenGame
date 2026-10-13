@@ -58,7 +58,7 @@ jobs:
           # No -a: the site root is owned by CloudPanel, so we must not try to set its times/perms/owner.
           rsync -rlz --times --omit-dir-times --no-perms --no-owner --no-group --delete \
             --exclude '.git/' --exclude '.github/' --exclude 'node_modules/' \
-            --exclude 'data/' --exclude '.env' \
+            --exclude 'data/' --exclude '.env' --exclude '.deploy-tools/' \
             ./ "cloudpanel:$DEPLOY_PATH/"
 
       - name: Restart app
@@ -69,10 +69,28 @@ jobs:
           ssh cloudpanel "DEPLOY_PATH='$DEPLOY_PATH' APP_PORT='$APP_PORT' bash -s" <<'REMOTE'
           set -e
           cd "$DEPLOY_PATH"
-          export NVM_DIR="$HOME/.nvm"
-          [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && nvm use 24 >/dev/null
-          echo "Node $(node -v)"
-          command -v pm2 >/dev/null || npm install -g pm2
+
+          # Find Node 24. CloudPanel installs it with nvm in the *site owner's* home,
+          # which is not always the SSH user's $HOME, and non-login shells don't load it.
+          OWNER_HOME="$(echo "$DEPLOY_PATH" | sed -E 's#^(/home/[^/]+).*#\1#')"
+          for dir in "$HOME/.nvm" "$OWNER_HOME/.nvm" /usr/local/nvm /opt/nvm; do
+            bin="$(ls -d "$dir"/versions/node/v24*/bin 2>/dev/null | sort -V | tail -n1)"
+            if [ -n "$bin" ] && [ -x "$bin/node" ]; then export PATH="$bin:$PATH"; break; fi
+          done
+          if ! command -v node >/dev/null || ! node -v | grep -q '^v24'; then
+            echo "::error::Node 24 not found for $(whoami). Looked in \$HOME/.nvm, $OWNER_HOME/.nvm and PATH."
+            echo "Found: $(command -v node || echo none) $(node -v 2>/dev/null)"
+            exit 1
+          fi
+          echo "Using Node $(node -v) from $(command -v node) as $(whoami)"
+
+          # PM2 lives inside the site so we never need write access to a global npm prefix.
+          TOOLS="$DEPLOY_PATH/.deploy-tools"
+          if [ ! -x "$TOOLS/node_modules/.bin/pm2" ]; then
+            npm install --silent --no-audit --no-fund --prefix "$TOOLS" pm2@6
+          fi
+          export PATH="$TOOLS/node_modules/.bin:$PATH"
+
           mkdir -p data
           PORT="$APP_PORT" pm2 startOrReload ecosystem.config.cjs --update-env
           pm2 save

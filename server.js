@@ -146,8 +146,11 @@ function serveStatic(req, res, url) {
   let rel = decodeURIComponent(url.pathname);
   if (rel.endsWith('/')) rel += 'index.html';
   const file = path.normalize(path.join(ROOT, rel));
-  const blocked = ['data', 'node_modules', '.git'].some((d) => file.startsWith(path.join(ROOT, d)));
-  if (!file.startsWith(ROOT + path.sep) || blocked || path.basename(file) === 'server.js') return send(res, 404, 'Not found', { 'Content-Type': 'text/plain' });
+  // Never serve server-side files: dotfiles/dirs (.env, .git, .deploy-tools), data, configs.
+  const parts = path.relative(ROOT, file).split(path.sep);
+  const blocked = parts.some((p) => p.startsWith('.')) || ['data', 'node_modules'].includes(parts[0])
+    || ['server.js', 'ecosystem.config.cjs', 'package.json', 'package-lock.json'].includes(parts.join('/'));
+  if (!file.startsWith(ROOT + path.sep) || blocked) return send(res, 404, 'Not found', { 'Content-Type': 'text/plain' });
   fs.stat(file, (err, st) => {
     if (err || !st.isFile()) return send(res, 404, 'Not found', { 'Content-Type': 'text/plain' });
     const ext = path.extname(file).toLowerCase();
