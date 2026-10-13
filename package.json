@@ -1,0 +1,10 @@
+{
+  "name": "maliban-savoury-maze",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Halloween maze runner for Maliban Savoury — collect packs, dodge skeletons, top the leaderboard.",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": { "node": ">=18" }
+}

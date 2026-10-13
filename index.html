@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#1a0f2e">
+  <title>Maliban Savoury Maze</title>
+  <meta name="description" content="Halloween maze runner — collect Maliban savoury packs, dodge the skeletons and climb the leaderboard to win Maliban gifts.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Creepster&family=Luckiest+Guy&family=Nunito:wght@600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <script type="importmap">
+    { "imports": {
+        "three": "./vendor/three/build/three.module.min.js",
+        "three/addons/": "./vendor/three/examples/jsm/"
+    } }
+  </script>
+</head>
+<body>
+  <div id="sky" aria-hidden="true">
+    <div class="moon"></div>
+    <svg class="castle" viewBox="0 0 400 220" preserveAspectRatio="xMaxYMax meet">
+      <path d="M40 220V120h18V96l12-22 12 22v24h20V70l16-34 16 34v50h22V60l20-40 20 40v60h20V92l14-26 14 26v28h18v-34l12-20 12 20v34h22v100z"/>
+      <rect x="196" y="80" width="8" height="12" fill="#ffb347" opacity=".8"/>
+      <rect x="140" y="110" width="7" height="10" fill="#ffb347" opacity=".7"/>
+      <rect x="268" y="120" width="7" height="10" fill="#ffb347" opacity=".6"/>
+    </svg>
+    <div class="bats"><span>🦇</span><span>🦇</span><span>🦇</span></div>
+  </div>
+
+  <canvas id="game" aria-label="Maze game"></canvas>
+  <div id="flash"></div>
+  <div id="popups"></div>
+
+  <header id="top">
+    <h1 class="logo"><span class="o">MALIBAN</span> <span class="g">SAVOURY</span> <span class="o">MAZE</span></h1>
+    <div id="hud" class="hidden">
+      <div class="pill"><span class="ic">🎃</span><div><small>SCORE</small><b id="hud-score">0</b></div></div>
+      <div class="pill" id="pill-time"><span class="ic">⏱️</span><div><small>TIME</small><b id="hud-time">01:00</b></div></div>
+      <div class="pill"><div><small>LIVES</small><b id="hud-lives" class="hearts"></b></div></div>
+      <button class="round" id="btn-pause" aria-label="Pause">❚❚</button>
+      <button class="round" id="btn-sound" aria-label="Toggle sound">🔊</button>
+    </div>
+    <div id="flavours" class="hidden" aria-label="Flavours collected"></div>
+  </header>
+
+  <div id="toast"></div>
+
+  <div id="dpad" class="hidden" aria-hidden="true">
+    <button data-dir="n">▲</button>
+    <button data-dir="w">◀</button>
+    <button data-dir="e">▶</button>
+    <button data-dir="s">▼</button>
+  </div>
+
+  <!-- Loading -->
+  <section id="screen-loading" class="screen show">
+    <div class="panel center">
+      <h2 class="logo big"><span class="o">MALIBAN</span><br><span class="g">SAVOURY MAZE</span></h2>
+      <div class="bar"><i id="load-bar"></i></div>
+      <p class="muted">Summoning skeletons…</p>
+    </div>
+  </section>
+
+  <!-- Start -->
+  <section id="screen-start" class="screen">
+    <div class="panel">
+      <h2 class="logo big"><span class="o">MALIBAN</span><br><span class="g">SAVOURY MAZE</span></h2>
+      <ol class="steps">
+        <li><b>Enter</b> the haunted maze.</li>
+        <li><b>Collect</b> as many Maliban savoury packs as you can.</li>
+        <li><b>Avoid</b> the five skeleton monsters.</li>
+        <li><b>Survive</b> until the 60 seconds run out.</li>
+        <li><b>Submit</b> your score to the leaderboard.</li>
+        <li><b>Compete</b> to win Maliban gifts!</li>
+      </ol>
+      <button class="btn big" id="btn-play">▶ ENTER THE MAZE</button>
+      <p class="controls muted">Arrow keys / WASD · Swipe or use the D-pad on mobile · P to pause</p>
+      <div class="row">
+        <button class="btn ghost" id="btn-rules">Rules &amp; Prizes</button>
+        <button class="btn ghost" id="btn-board">🏆 Leaderboard</button>
+      </div>
+      <p class="tagline"><span class="o">COLLECT.</span> <span class="g">SURVIVE.</span> <span class="r">WIN.</span></p>
+    </div>
+  </section>
+
+  <!-- Rules -->
+  <section id="screen-rules" class="screen">
+    <div class="panel scroll">
+      <h2 class="title">Game Rules</h2>
+      <ul class="rules">
+        <li>You have <b>60 seconds</b> and <b>three lives</b>.</li>
+        <li>Maliban packs appear throughout the maze — every pack adds points.</li>
+        <li>Touching a skeleton removes one life.</li>
+        <li>The game ends when time runs out or you lose all three lives.</li>
+        <li>Submit your final score to the leaderboard. Come back any time to beat it!</li>
+      </ul>
+      <h2 class="title">Scoring</h2>
+      <div class="score-table">
+        <div><span>Each pack collected</span><b id="r-pack"></b></div>
+        <div><span>Collect all five flavours</span><b id="r-five"></b></div>
+        <div><span>Each life left when time runs out</span><b id="r-life"></b></div>
+      </div>
+      <div class="flavour-row" id="rules-flavours"></div>
+      <h2 class="title">Rewards</h2>
+      <ul class="rules">
+        <li>🎁 <b>Daily winners</b> receive Maliban savoury product bundles.</li>
+        <li>🎁 <b>Weekly leaders</b> receive larger gift packs.</li>
+        <li>🏆 <b>Final leaderboard winners</b> receive the main campaign prizes.</li>
+      </ul>
+      <button class="btn" data-back>Back</button>
+    </div>
+  </section>
+
+  <!-- Leaderboard -->
+  <section id="screen-board" class="screen">
+    <div class="panel board">
+      <h2 class="title">Leaderboard</h2>
+      <div class="tabs" role="tablist">
+        <button data-period="daily" class="on">Today</button>
+        <button data-period="weekly">This week</button>
+        <button data-period="all">All time</button>
+      </div>
+      <ol class="lb" id="lb-list"></ol>
+      <p class="muted small" id="lb-note"></p>
+      <button class="btn" data-back>Back</button>
+    </div>
+  </section>
+
+  <!-- Pause -->
+  <section id="screen-pause" class="screen">
+    <div class="panel center">
+      <h2 class="title">Paused</h2>
+      <button class="btn big" id="btn-resume">▶ Resume</button>
+      <button class="btn ghost" id="btn-quit">Quit to menu</button>
+    </div>
+  </section>
+
+  <!-- Game over -->
+  <section id="screen-over" class="screen">
+    <div class="panel">
+      <h2 class="title" id="over-title">Time's up!</h2>
+      <div class="final"><small>FINAL SCORE</small><b id="over-score">0</b><span id="over-best" class="muted small"></span></div>
+      <div class="score-table" id="over-breakdown"></div>
+      <form id="submit-form" autocomplete="on">
+        <label>Your name <input id="in-name" name="nickname" maxlength="16" minlength="2" required placeholder="e.g. SpookySam"></label>
+        <label>Mobile number <em>(optional — so we can contact winners)</em>
+          <input id="in-phone" name="tel" type="tel" maxlength="16" inputmode="tel" placeholder="07X XXX XXXX"></label>
+        <button class="btn big" type="submit" id="btn-submit">Submit score</button>
+        <p class="msg" id="submit-msg"></p>
+      </form>
+      <div class="row">
+        <button class="btn" id="btn-again">↻ Play again</button>
+        <button class="btn ghost" id="btn-over-board">🏆 Leaderboard</button>
+      </div>
+    </div>
+  </section>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
