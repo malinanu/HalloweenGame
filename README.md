@@ -59,6 +59,40 @@ the leaderboard falls back to scores saved in the player's own browser, so for t
 campaign deploy it with the Node server (any Node host: Render, Railway, a VPS, etc.) and
 put it behind HTTPS.
 
+## Deploying to CloudPanel (GitHub Actions)
+
+[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) deploys on every push to `main`
+(or manually from **Actions → Deploy to CloudPanel → Run workflow**). It syntax-checks the code,
+rsyncs the files over SSH, (re)starts the app with PM2 and checks it responds.
+
+**1. On CloudPanel:** *Add Site → Create a Node.js Site*, pick a Node version and an **App Port**
+(e.g. `3000`). Note the site user and the site root, e.g. `/home/maliban/htdocs/game.example.com`.
+Enable Let's Encrypt for HTTPS.
+
+**2. SSH key:** generate a key pair just for deploys and add the public key to the site user
+(CloudPanel → Site → *Settings / SSH Keys*, or append it to `~/.ssh/authorized_keys` of the site user):
+
+```bash
+ssh-keygen -t ed25519 -C "github-deploy" -f maliban_deploy -N ""
+ssh-keyscan -p 22 your.server.ip      # output -> SSH_KNOWN_HOSTS
+```
+
+**3. GitHub secrets** (repo → *Settings → Secrets and variables → Actions*):
+
+| Secret | Example | Required |
+| --- | --- | --- |
+| `SSH_PRIVATE_KEY` | contents of `maliban_deploy` | yes |
+| `SSH_HOST` | `203.0.113.10` | yes |
+| `SSH_USER` | `maliban` (the CloudPanel site user) | yes |
+| `DEPLOY_PATH` | `/home/maliban/htdocs/game.example.com` | yes |
+| `APP_PORT` | `3000` — must match the App Port set in CloudPanel | default `3000` |
+| `SSH_PORT` | `22` | default `22` |
+| `SSH_KNOWN_HOSTS` | output of `ssh-keyscan` | recommended (otherwise the host key is trusted on first use) |
+
+**4. Server-only settings** (optional): create `DEPLOY_PATH/.env` on the server, e.g.
+`ADMIN_KEY=some-long-random-string`. Deploys never overwrite `.env` or the `data/` folder
+holding the leaderboard.
+
 ## Leaderboard API
 
 | Method | Path | Description |

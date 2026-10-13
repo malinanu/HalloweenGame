@@ -1,0 +1,92 @@
+name: Deploy to CloudPanel
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Syntax check
+        run: |
+          node --check server.js
+          for f in js/*.js; do node --input-type=module --check < "$f"; done
+
+      - name: Set up SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          if [ -n "$SSH_KNOWN_HOSTS" ]; then
+            printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          else
+            echo "::warning::SSH_KNOWN_HOSTS secret not set; trusting the host key found by ssh-keyscan."
+            ssh-keyscan -p "$SSH_PORT" -H "$SSH_HOST" > ~/.ssh/known_hosts
+          fi
+          cat > ~/.ssh/config <<CFG
+          Host cloudpanel
+            HostName $SSH_HOST
+            Port $SSH_PORT
+            User ${{ secrets.SSH_USER }}
+            IdentityFile ~/.ssh/deploy_key
+            IdentitiesOnly yes
+          CFG
+
+      - name: Upload files
+        env:
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          # --delete keeps the server in sync, but never touches the leaderboard data or server-side .env
+          rsync -az --delete \
+            --exclude '.git/' --exclude '.github/' --exclude 'node_modules/' \
+            --exclude 'data/' --exclude '.env' \
+            ./ "cloudpanel:$DEPLOY_PATH/"
+
+      - name: Restart app
+        env:
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          APP_PORT: ${{ secrets.APP_PORT || '3000' }}
+        run: |
+          ssh cloudpanel "DEPLOY_PATH='$DEPLOY_PATH' APP_PORT='$APP_PORT' bash -s" <<'REMOTE'
+          set -e
+          cd "$DEPLOY_PATH"
+          export NVM_DIR="$HOME/.nvm"
+          [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+          command -v pm2 >/dev/null || npm install -g pm2
+          mkdir -p data
+          PORT="$APP_PORT" pm2 startOrReload ecosystem.config.cjs --update-env
+          pm2 save
+          REMOTE
+
+      - name: Health check
+        env:
+          APP_PORT: ${{ secrets.APP_PORT || '3000' }}
+        run: |
+          for i in 1 2 3 4 5; do
+            if ssh cloudpanel "curl -fsS http://127.0.0.1:$APP_PORT/api/leaderboard?limit=1" ; then exit 0; fi
+            sleep 3
+          done
+          echo "::error::App did not respond on port $APP_PORT"
+          exit 1
+
+      - name: Clean up key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
