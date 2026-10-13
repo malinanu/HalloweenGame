@@ -15,7 +15,7 @@
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { margin: 0; height: 100%; overflow: hidden; background: #120a22; color: var(--ink); font-family: 'Nunito', system-ui, sans-serif; }
-body { touch-action: none; user-select: none; -webkit-user-select: none; }
+body { touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; overscroll-behavior: none; position: fixed; inset: 0; }
 button { font: inherit; color: inherit; cursor: pointer; }
 
 /* ---------- background sky ---------- */
@@ -62,6 +62,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 #toast.count { color: #fff; font-size: clamp(60px, 22vw, 140px); text-shadow: 0 0 30px #a56bff, 0 6px 0 #3b1a6b; }
 #toast.go { color: var(--green); font-size: clamp(60px, 22vw, 140px); text-shadow: 0 0 30px #3aff7a, 0 6px 0 #0d4a12; }
 #toast.bonus { color: #ffe066; text-shadow: 0 0 24px #ff9a00, 0 4px 0 #6b2a00; }
+#toast.hint { color: #fff; font-size: clamp(20px, 6vw, 30px); text-shadow: 0 0 18px #a56bff, 0 3px 0 #2b0d4a; animation-duration: 2.4s; }
 #toast.hurt { color: #ff5a6a; text-shadow: 0 0 24px #ff0030, 0 4px 0 #4a0010; font-size: clamp(22px, 6vw, 40px); }
 @keyframes toast { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.5) } 15% { opacity: 1; transform: translate(-50%, -50%) scale(1.1) } 30% { transform: translate(-50%, -50%) scale(1) } 75% { opacity: 1 } 100% { opacity: 0; transform: translate(-50%, -70%) scale(1) } }
 #popups { position: fixed; inset: 0; pointer-events: none; z-index: 4; }
@@ -69,14 +70,14 @@ button { font: inherit; color: inherit; cursor: pointer; }
 @keyframes pop { from { opacity: 1; margin-top: 0 } to { opacity: 0; margin-top: -60px } }
 
 /* ---------- D-pad ---------- */
-#dpad { position: fixed; bottom: calc(14px + var(--safe-bottom)); left: 50%; transform: translateX(-50%); width: 168px; height: 168px; z-index: 5;
+#dpad { position: fixed; bottom: calc(14px + var(--safe-bottom)); left: 50%; transform: translateX(-50%); width: min(176px, 44vw); height: min(176px, 44vw); z-index: 5; touch-action: none; gap: 4px;
   display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); grid-template-areas: ". n ." "w . e" ". s ."; opacity: .85; }
-#dpad button { border: 2px solid rgba(255,138,31,.75); background: rgba(30, 14, 50, .7); color: var(--orange-2); border-radius: 14px; font-size: 22px; touch-action: none; }
+#dpad button { pointer-events: none; border: 2px solid rgba(255,138,31,.75); background: rgba(30, 14, 50, .7); color: var(--orange-2); border-radius: 14px; font-size: 22px; touch-action: none; }
 #dpad button.on { background: rgba(255,138,31,.55); color: #fff; }
 #dpad [data-dir=n] { grid-area: n; } #dpad [data-dir=s] { grid-area: s; } #dpad [data-dir=w] { grid-area: w; } #dpad [data-dir=e] { grid-area: e; }
 
 /* ---------- screens ---------- */
-.screen { position: fixed; inset: 0; z-index: 10; display: none; align-items: center; justify-content: center; padding: 16px; background: rgba(10, 4, 20, .45); backdrop-filter: blur(2px); }
+.screen { position: fixed; inset: 0; padding-top: max(16px, var(--safe-top)) !important; padding-bottom: max(16px, var(--safe-bottom)) !important; z-index: 10; display: none; align-items: center; justify-content: center; padding: 16px; background: rgba(10, 4, 20, .45); backdrop-filter: blur(2px); }
 .screen.show { display: flex; animation: fade .25s ease-out; }
 @keyframes fade { from { opacity: 0 } }
 .panel { width: min(520px, 100%); max-height: calc(100% - 8px); overflow: auto; padding: 22px 20px; border-radius: 18px; text-align: center; position: relative;
@@ -155,3 +156,20 @@ form .btn { justify-self: center; }
 /* ---------- watermark ---------- */
 #watermark { position: fixed; right: 10px; bottom: calc(6px + var(--safe-bottom)); z-index: 20; pointer-events: none;
   font-size: 11px; font-weight: 800; letter-spacing: .5px; color: rgba(255, 255, 255, .45); text-shadow: 0 1px 2px rgba(0, 0, 0, .8); }
+
+/* Landscape phones: compact HUD, pad on the right, maze fills the rest. */
+@media (orientation: landscape) and (max-height: 520px) {
+  #top { flex-direction: row; justify-content: center; gap: 10px; padding-top: calc(4px + var(--safe-top)); }
+  #top .logo { display: none; }
+  #flavours { flex-direction: column; position: fixed; left: calc(10px + env(safe-area-inset-left, 0px)); top: 50%; transform: translateY(-50%); }
+  .pill { padding: 3px 9px; }
+  .pill .ic { display: none; }
+  .pill b { font-size: 18px; }
+  .round { width: 34px; height: 34px; }
+  #dpad { left: auto; right: calc(12px + env(safe-area-inset-right, 0px)); transform: none; bottom: calc(10px + var(--safe-bottom)); width: min(150px, 38vh); height: min(150px, 38vh); }
+  #watermark { right: auto; left: 10px; }
+  .panel { max-height: 100%; padding: 14px; }
+  .logo.big { font-size: 36px; margin-bottom: 4px; }
+  .steps { font-size: 14px; line-height: 1.35; margin-bottom: 8px; }
+  .tagline { display: none; }
+}

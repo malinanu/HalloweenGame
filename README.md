@@ -15,7 +15,13 @@ Runs in any modern browser on phones, tablets and desktops (Three.js / WebGL, no
 5. Submit your score to the leaderboard.
 6. Compete to win Maliban gifts.
 
-**Controls:** arrow keys / WASD on desktop · swipe or on-screen D-pad on mobile · `P` / `Esc` to pause.
+**Controls:** arrow keys / WASD on desktop · `P` / `Esc` to pause.
+
+**Mobile:** swipe anywhere on the maze, or use the on-screen pad (slide your finger between
+arrows without lifting it). Phones get vibration feedback, go fullscreen and keep the screen
+awake during a round (where the browser allows it), and switch to a compact side-pad layout in
+landscape. Rendering is automatically lighter on phones (lower pixel ratio, smaller shadow map,
+and a low-graphics fallback if the frame rate drops).
 
 ### Rules & scoring (from the campaign brief)
 

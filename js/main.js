@@ -7,7 +7,7 @@ import { startSession, fetchBoard, submitScore, personalBest, savePersonalBest }
 
 const $ = (s) => document.querySelector(s);
 const screens = [...document.querySelectorAll('.screen')];
-const touch = matchMedia('(pointer: coarse)').matches;
+let touch = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0 && matchMedia('(hover: none)').matches;
 
 let game;
 let session = null;
@@ -29,6 +29,7 @@ const hearts = $('#hud-lives');
 const flavourBar = $('#flavours');
 flavourBar.innerHTML = PRODUCTS.map((p) => `<i data-id="${p.id}" title="${p.name}" style="background:${p.color};color:${p.color}"></i>`).join('');
 $('#rules-flavours').innerHTML = PRODUCTS.map((p) => `<span style="background:${p.color}">${p.name}</span>`).join('');
+if (touch) $('.controls').textContent = 'Swipe anywhere on the maze or slide on the pad to steer · tap ❚❚ to pause';
 $('#r-pack').textContent = `${SCORING.perPack} pts`;
 $('#r-five').textContent = `+${SCORING.allFiveBonus} pts`;
 $('#r-life').textContent = `+${SCORING.perLifeLeft} pts`;
@@ -68,25 +69,53 @@ const hooks = {
   insets() {
     const hudVisible = !$('#top').classList.contains('hidden');
     const top = hudVisible ? $('#top').getBoundingClientRect().bottom + 4 : 12;
-    const dpad = !$('#dpad').classList.contains('hidden');
-    const bottom = dpad ? Math.min(150, innerHeight * 0.2) : 12;
-    return { top, bottom };
+    const pad = $('#dpad');
+    if (pad.classList.contains('hidden')) return { top, bottom: 12 };
+    const r = pad.getBoundingClientRect();
+    // Landscape phones put the pad at the side; portrait puts it under the maze.
+    if (r.left > innerWidth * 0.6) return { top, bottom: 8, right: innerWidth - r.left + 8, left: 8 };
+    return { top, bottom: innerHeight - r.top + 6 };
+  },
+  haptic(pattern) {
+    if (touch && navigator.vibrate) { try { navigator.vibrate(pattern); } catch { /* ignore */ } }
   },
   end(result) { gameOver(result); },
 };
 
 // ---------------------------------------------------------------- flow
+// Fullscreen + keep the screen awake while playing on phones.
+let wakeLock = null;
+async function enterMobileMode() {
+  if (!touch) return;
+  const el = document.documentElement;
+  try {
+    if (!document.fullscreenElement && el.requestFullscreen) await el.requestFullscreen({ navigationUI: 'hide' });
+  } catch { /* not allowed (e.g. iOS Safari) */ }
+  try { wakeLock = await navigator.wakeLock?.request('screen'); } catch { /* ignore */ }
+}
+function releaseWakeLock() {
+  wakeLock?.release().catch(() => {});
+  wakeLock = null;
+}
+
+let hinted = false;
 async function play() {
+  enterMobileMode();
   audio.ensure();
   audio.startMusic();
   $('#hud').classList.remove('hidden');
   $('#flavours').classList.remove('hidden');
   show(null);
   game.start();
+  if (touch && !hinted) {
+    hinted = true;
+    setTimeout(() => hooks.toast('SWIPE OR USE THE PAD', 'hint'), 200);
+  }
   session = await startSession();
 }
 
 function gameOver(result) {
+  releaseWakeLock();
   lastResult = result;
   submitted = false;
   const best = personalBest();
@@ -176,12 +205,28 @@ $('#btn-over-board').addEventListener('click', () => openBoard('daily'));
 document.querySelectorAll('[data-back]').forEach((b) => b.addEventListener('click', () => show(b.closest('#screen-board') ? backTo : 'screen-start')));
 $('#btn-pause').addEventListener('click', togglePause);
 $('#btn-resume').addEventListener('click', togglePause);
-$('#btn-quit').addEventListener('click', () => { game.attract(); $('#hud').classList.add('hidden'); $('#flavours').classList.add('hidden'); show('screen-start'); });
+$('#btn-quit').addEventListener('click', () => { releaseWakeLock(); game.attract(); $('#hud').classList.add('hidden'); $('#flavours').classList.add('hidden'); show('screen-start'); });
 const soundBtn = $('#btn-sound');
 const syncSound = () => { soundBtn.textContent = audio.muted ? '🔇' : '🔊'; };
 syncSound();
 soundBtn.addEventListener('click', () => { audio.ensure(); audio.setMuted(!audio.muted); syncSound(); });
-document.addEventListener('visibilitychange', () => { if (document.hidden && game?.pause()) show('screen-pause'); });
+document.addEventListener('visibilitychange', async () => {
+  if (document.hidden && game?.pause()) show('screen-pause');
+  // the wake lock is dropped when the tab is hidden; take it back when we return mid-round
+  if (!document.hidden && wakeLock && game?.state !== 'over') {
+    try { wakeLock = await navigator.wakeLock?.request('screen'); } catch { /* ignore */ }
+  }
+});
+// Rotating the phone or showing/hiding the browser bar changes the viewport.
+addEventListener('orientationchange', () => setTimeout(() => game?.resize(), 250));
+document.addEventListener('contextmenu', (e) => { if (touch) e.preventDefault(); });
+// Stop double-tap zoom on iOS (user-scalable=no is ignored there).
+let lastTouchEnd = 0;
+document.addEventListener('touchend', (e) => {
+  const now = Date.now();
+  if (now - lastTouchEnd < 300 && !e.target.closest('input, button, a')) e.preventDefault();
+  lastTouchEnd = now;
+}, { passive: false });
 
 // ---------------------------------------------------------------- boot
 (async function boot() {
@@ -194,6 +239,12 @@ document.addEventListener('visibilitychange', () => { if (document.hidden && gam
     return;
   }
   const input = new Input($('#game'), $('#dpad'));
+  input.onSteer = () => hooks.haptic(6);
+  input.onTouch = () => {
+    if (touch) return;
+    touch = true; // hybrid laptop/tablet: reveal the pad once the screen is touched
+    if (game.state === 'playing' || game.state === 'countdown') show(null);
+  };
   input.onPause = () => { if (game.state === 'playing' || game.state === 'paused' || game.state === 'countdown') togglePause(); };
   game = new Game($('#game'), assets, audio, input, hooks);
   game.attract();

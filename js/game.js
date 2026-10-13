@@ -17,7 +17,9 @@ export class Game {
     this.hooks = hooks; // { hud(state), toast(text, kind), flash(kind), end(result), insets() }
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
     this.lowQuality = new URLSearchParams(location.search).has('low');
-    this.renderer.setPixelRatio(this.lowQuality ? 1 : Math.min(devicePixelRatio, 2));
+    this.mobile = matchMedia('(pointer: coarse)').matches;
+    this.maxPixelRatio = this.mobile ? 1.5 : 2; // phones: sharp enough, much cheaper to fill
+    this.renderer.setPixelRatio(this.lowQuality ? 1 : Math.min(devicePixelRatio, this.maxPixelRatio));
     this.renderer.shadowMap.enabled = !this.lowQuality;
     this.perf = { frames: 0, time: 0 };
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -285,6 +287,7 @@ export class Game {
     this.score += SCORING.perPack;
     this.flavours.add(pack.product.id);
     this.audio.pickup(this.combo);
+    this.hooks.haptic?.(12);
     this.vfx.play('star', pos, { scale: 3.6, fps: 40, additive: true });
     this.vfx.burst(pos, { texture: 'spark_05_a', count: 10, color: pack.product.color, speed: 5, size: 0.7 });
     this.hooks.popup(`+${SCORING.perPack}`, pos, this.camera, pack.product.color);
@@ -292,6 +295,7 @@ export class Game {
       this.allFiveAwarded = true;
       this.score += SCORING.allFiveBonus;
       this.audio.bonus();
+      this.hooks.haptic?.([20, 30, 20, 30, 40]);
       this.hooks.toast(`ALL 5 FLAVOURS! +${SCORING.allFiveBonus}`, 'bonus');
       this.vfx.play('wavy', this.player.mesh.position.clone().setY(1.2), { scale: 7, fps: 30 });
     }
@@ -303,6 +307,7 @@ export class Game {
     this.invuln = RULES.invulnerableSec;
     this.shake = 0.6;
     this.audio.hit();
+    this.hooks.haptic?.([80, 40, 120]);
     const p = this.player.mesh.position.clone().setY(1.3);
     this.vfx.play('hit', p, { scale: 5, fps: 36, color: '#ff6a6a' });
     this.vfx.play('blood', p.clone().setY(1.6), { scale: 3, fps: 30, additive: false, color: '#b388ff' });
@@ -332,12 +337,13 @@ export class Game {
   fitCamera() {
     if (!this.world) return;
     const w = innerWidth, h = innerHeight;
-    const { top, bottom } = this.hooks.insets();
+    const { top, bottom, left = 0, right = 0 } = this.hooks.insets();
     const availH = Math.max(100, h - top - bottom);
+    const availW = Math.max(100, w - left - right);
     const cam = this.camera;
     cam.clearViewOffset();
-    cam.aspect = w / availH;
-    cam.fov = w / availH < 0.75 ? 34 : 40;
+    cam.aspect = availW / availH;
+    cam.fov = availW / availH < 0.75 ? 34 : 40;
     cam.updateProjectionMatrix();
 
     const pitch = THREE.MathUtils.degToRad(this.layout() === MAZE.portrait ? 62 : 58);
@@ -365,7 +371,7 @@ export class Game {
       d *= extent;
     }
     this.camBase = { pos: cam.position.clone(), target: target.clone() };
-    cam.setViewOffset(w, availH, 0, -top, w, h);
+    cam.setViewOffset(availW, availH, -left, -top, w, h);
     cam.updateProjectionMatrix();
   }
 

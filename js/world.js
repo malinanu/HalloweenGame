@@ -74,7 +74,8 @@ export class World {
     moon.castShadow = true;
     const s = Math.max(this.halfW, this.halfD) + 6;
     Object.assign(moon.shadow.camera, { left: -s, right: s, top: s, bottom: -s, near: 1, far: 90 });
-    moon.shadow.mapSize.set(2048, 2048);
+    const size = matchMedia('(pointer: coarse)').matches ? 1024 : 2048;
+    moon.shadow.mapSize.set(size, size);
     moon.shadow.bias = -0.0008;
     moon.shadow.normalBias = 0.04;
     this.root.add(moon);
