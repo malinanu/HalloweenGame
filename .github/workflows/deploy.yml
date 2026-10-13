@@ -14,9 +14,9 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
 
@@ -70,22 +70,37 @@ jobs:
           set -e
           cd "$DEPLOY_PATH"
 
-          # Find Node 24. CloudPanel installs it with nvm in the *site owner's* home,
-          # which is not always the SSH user's $HOME, and non-login shells don't load it.
+          # Find Node 24. CloudPanel installs it with nvm in the site owner's home, which a
+          # non-interactive SSH session doesn't load. If none is visible to this user, download
+          # an official Node 24 build into the site (no root needed).
+          TOOLS="$DEPLOY_PATH/.deploy-tools"
           OWNER_HOME="$(echo "$DEPLOY_PATH" | sed -E 's#^(/home/[^/]+).*#\1#')"
-          for dir in "$HOME/.nvm" "$OWNER_HOME/.nvm" /usr/local/nvm /opt/nvm; do
-            bin="$(ls -d "$dir"/versions/node/v24*/bin 2>/dev/null | sort -V | tail -n1)"
-            if [ -n "$bin" ] && [ -x "$bin/node" ]; then export PATH="$bin:$PATH"; break; fi
-          done
-          if ! command -v node >/dev/null || ! node -v | grep -q '^v24'; then
-            echo "::error::Node 24 not found for $(whoami). Looked in \$HOME/.nvm, $OWNER_HOME/.nvm and PATH."
-            echo "Found: $(command -v node || echo none) $(node -v 2>/dev/null)"
-            exit 1
+          find_node() {
+            for bin in "$TOOLS/node/bin" \
+                $(ls -d "$HOME"/.nvm/versions/node/v24*/bin "$OWNER_HOME"/.nvm/versions/node/v24*/bin \
+                        /home/*/.nvm/versions/node/v24*/bin /usr/local/nvm/versions/node/v24*/bin 2>/dev/null | sort -rV) \
+                /usr/local/bin /usr/bin; do
+              if [ -x "$bin/node" ] && "$bin/node" -v 2>/dev/null | grep -q '^v24'; then echo "$bin"; return 0; fi
+            done
+            return 1
+          }
+          if ! NODE_BIN="$(find_node)"; then
+            case "$(uname -m)" in x86_64) ARCH=x64 ;; aarch64|arm64) ARCH=arm64 ;; *) echo "::error::Unsupported CPU $(uname -m)"; exit 1 ;; esac
+            BASE=https://nodejs.org/dist/latest-v24.x
+            FILE="$(curl -fsSL "$BASE/SHASUMS256.txt" | grep -o "node-v24[^ ]*-linux-$ARCH.tar.xz" | head -n1)"
+            echo "No Node 24 visible to $(whoami); installing $FILE into $TOOLS/node"
+            mkdir -p "$TOOLS"
+            curl -fsSL "$BASE/$FILE" -o "$TOOLS/node.tar.xz"
+            curl -fsSL "$BASE/SHASUMS256.txt" | grep " $FILE\$" | sed "s# $FILE# $TOOLS/node.tar.xz#" | sha256sum -c -
+            rm -rf "$TOOLS/node" && mkdir -p "$TOOLS/node"
+            tar -xJf "$TOOLS/node.tar.xz" -C "$TOOLS/node" --strip-components=1
+            rm -f "$TOOLS/node.tar.xz"
+            NODE_BIN="$(find_node)"
           fi
-          echo "Using Node $(node -v) from $(command -v node) as $(whoami)"
+          export PATH="$NODE_BIN:$PATH"
+          echo "Using Node $(node -v) from $NODE_BIN as $(whoami)"
 
           # PM2 lives inside the site so we never need write access to a global npm prefix.
-          TOOLS="$DEPLOY_PATH/.deploy-tools"
           if [ ! -x "$TOOLS/node_modules/.bin/pm2" ]; then
             npm install --silent --no-audit --no-fund --prefix "$TOOLS" pm2@6
           fi
