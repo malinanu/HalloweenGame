@@ -69,12 +69,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
 #popups span { position: absolute; font-family: 'Luckiest Guy', sans-serif; font-size: 26px; transform: translate(-50%, -50%); text-shadow: 0 2px 0 #000, 0 0 10px currentColor; animation: pop .9s ease-out forwards; }
 @keyframes pop { from { opacity: 1; margin-top: 0 } to { opacity: 0; margin-top: -60px } }
 
-/* ---------- D-pad ---------- */
-#dpad { position: fixed; bottom: calc(14px + var(--safe-bottom)); left: 50%; transform: translateX(-50%); width: min(176px, 44vw); height: min(176px, 44vw); z-index: 5; touch-action: none; gap: 4px;
-  display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); grid-template-areas: ". n ." "w . e" ". s ."; opacity: .85; }
-#dpad button { pointer-events: none; border: 2px solid rgba(255,138,31,.75); background: rgba(30, 14, 50, .7); color: var(--orange-2); border-radius: 14px; font-size: 22px; touch-action: none; }
-#dpad button.on { background: rgba(255,138,31,.55); color: #fff; }
-#dpad [data-dir=n] { grid-area: n; } #dpad [data-dir=s] { grid-area: s; } #dpad [data-dir=w] { grid-area: w; } #dpad [data-dir=e] { grid-area: e; }
 
 /* ---------- screens ---------- */
 .screen { position: fixed; inset: 0; padding-top: max(16px, var(--safe-top)) !important; padding-bottom: max(16px, var(--safe-bottom)) !important; z-index: 10; display: none; align-items: center; justify-content: center; padding: 16px; background: rgba(10, 4, 20, .45); backdrop-filter: blur(2px); }
@@ -166,10 +160,35 @@ form .btn { justify-self: center; }
   .pill .ic { display: none; }
   .pill b { font-size: 18px; }
   .round { width: 34px; height: 34px; }
-  #dpad { left: auto; right: calc(12px + env(safe-area-inset-right, 0px)); transform: none; bottom: calc(10px + var(--safe-bottom)); width: min(150px, 38vh); height: min(150px, 38vh); }
   #watermark { right: auto; left: 10px; }
   .panel { max-height: 100%; padding: 14px; }
   .logo.big { font-size: 36px; margin-bottom: 4px; }
   .steps { font-size: 14px; line-height: 1.35; margin-bottom: 8px; }
   .tagline { display: none; }
 }
+
+/* ---------- tutorial ---------- */
+.tut-cards { position: relative; }
+.tut-card { display: none; animation: fade .3s ease-out; }
+.tut-card.on { display: block; }
+.tut-card p { margin: 0 auto 10px; max-width: 360px; line-height: 1.5; font-size: 16px; }
+.tut-card b { color: var(--orange-2); }
+.tut-try { color: var(--green) !important; font-weight: 800; animation: pulse .7s infinite alternate; }
+body:not(.touch) .tut-touch { display: none; }
+body.touch .tut-keys { display: none; }
+.tut-art { height: 120px; display: flex; align-items: center; justify-content: center; gap: 10px; position: relative; }
+.big-emoji { font-size: 72px; filter: drop-shadow(0 0 16px rgba(255, 140, 30, .5)); }
+.wobble { animation: wobble 1s ease-in-out infinite alternate; }
+@keyframes wobble { from { transform: rotate(-12deg) } to { transform: rotate(12deg) } }
+.swipe-art { width: 220px; margin: 0 auto; }
+.swipe-art .finger { font-size: 56px; position: absolute; left: 30px; top: 30px; animation: swipe 1.6s ease-in-out infinite; }
+.swipe-art .trail { position: absolute; left: 50px; top: 58px; height: 6px; width: 0; border-radius: 3px; background: linear-gradient(90deg, rgba(125,255,58,0), var(--green)); animation: trail 1.6s ease-in-out infinite; }
+@keyframes swipe { 0%, 15% { transform: translateX(0); opacity: 0 } 25% { opacity: 1 } 70% { transform: translateX(120px); opacity: 1 } 100% { transform: translateX(120px); opacity: 0 } }
+@keyframes trail { 0%, 25% { width: 0; opacity: 1 } 70% { width: 120px; opacity: 1 } 100% { width: 120px; opacity: 0 } }
+.packs-art i { width: 34px; height: 48px; border-radius: 6px 6px 4px 4px; border: 2px solid rgba(255,255,255,.5); box-shadow: 0 0 14px currentColor; animation: bob 1s ease-in-out infinite alternate; }
+.packs-art i:nth-child(2) { animation-delay: .2s } .packs-art i:nth-child(3) { animation-delay: .4s } .packs-art i:nth-child(4) { animation-delay: .6s } .packs-art i:nth-child(5) { animation-delay: .8s }
+@keyframes bob { to { transform: translateY(-10px) } }
+.tut-dots { display: flex; justify-content: center; gap: 8px; margin: 6px 0 4px; }
+.tut-dots i { width: 9px; height: 9px; border-radius: 50%; background: rgba(255,255,255,.25); transition: background .2s, transform .2s; }
+.tut-dots i.on { background: var(--orange); transform: scale(1.3); }
+#screen-tutorial { touch-action: none; }

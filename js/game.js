@@ -50,7 +50,17 @@ export class Game {
   }
 
   layout() {
-    return innerWidth >= innerHeight * 1.1 ? MAZE.landscape : MAZE.portrait;
+    if (innerWidth >= innerHeight * 1.1) return { ...MAZE.landscape, portrait: false };
+    // Tall phones get extra rows so the maze fills the screen height (cell size stays the same).
+    const { cols, rows } = MAZE.portrait;
+    const ratio = (innerHeight - 140) / innerWidth;
+    const fit = Math.max(rows, Math.min(MAZE.portraitMaxRows, Math.floor(ratio * cols * 1.05)));
+    return { cols, rows: fit, portrait: true };
+  }
+
+  // More maze, more packs on screen at once.
+  get activePacks() {
+    return Math.max(RULES.activePacks, Math.round(this.maze.cells.length / 8));
   }
 
   build(mode) {
@@ -58,7 +68,8 @@ export class Game {
     this.scene = new THREE.Scene();
     this.scene.fog = new THREE.Fog('#1a0f2e', 60, 140);
     this.vfx = new VFX(this.scene, this.assets);
-    const { cols, rows } = this.layout();
+    this.mazeLayout = this.layout();
+    const { cols, rows } = this.mazeLayout;
     this.maze = new Maze(cols, rows).generate(MAZE.extraOpenings);
     this.world = new World(this.scene, this.assets, this.vfx, this.maze);
     this.player = new Player(this.world, PLAYER_SPEED);
@@ -69,7 +80,7 @@ export class Game {
     this.mode = mode;
     this.player.setVisible(mode !== 'attract');
     if (mode === 'attract') {
-      for (let i = 0; i < RULES.activePacks; i++) this.spawnPack();
+      for (let i = 0; i < this.activePacks; i++) this.spawnPack();
     }
     this.resize();
   }
@@ -161,7 +172,7 @@ export class Game {
     const p = this.player.mesh.position.clone().setY(1.2);
     this.vfx.play('electric', p, { scale: 4, color: '#9dffb8' });
     this.vfx.burst(p, { texture: 'magic_02_a', count: 14, color: '#6dff9a', speed: 3, size: 0.8, up: 2, gravity: -2 });
-    for (let i = 0; i < RULES.activePacks; i++) this.spawnPack();
+    for (let i = 0; i < this.activePacks; i++) this.spawnPack();
     this.audio.go();
     this.hooks.toast('GO!', 'go');
   }
@@ -346,7 +357,7 @@ export class Game {
     cam.fov = availW / availH < 0.75 ? 34 : 40;
     cam.updateProjectionMatrix();
 
-    const pitch = THREE.MathUtils.degToRad(this.layout() === MAZE.portrait ? 62 : 58);
+    const pitch = THREE.MathUtils.degToRad(this.mazeLayout.portrait ? 62 : 58);
     const dir = new THREE.Vector3(0, Math.sin(pitch), Math.cos(pitch));
     const hw = this.world.halfW + 0.6, hd = this.world.halfD + 0.6;
     const wallH = 4 * MAZE.wallScaleY;

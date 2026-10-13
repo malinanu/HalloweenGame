@@ -38,6 +38,7 @@ export const MONSTERS = [
 export const MAZE = {
   cell: 4,                 // world units per cell (KayKit tiles are 4x4)
   portrait: { cols: 7, rows: 10 },
+  portraitMaxRows: 14,     // tall phones grow the portrait maze up to this many rows
   landscape: { cols: 11, rows: 7 },
   extraOpenings: 0.32,     // fraction of dead-ends/walls knocked out so there are loops to escape through
   wallScaleY: 0.45,        // squash the 4m KayKit walls so the camera can see into the corridors

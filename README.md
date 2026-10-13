@@ -17,11 +17,14 @@ Runs in any modern browser on phones, tablets and desktops (Three.js / WebGL, no
 
 **Controls:** arrow keys / WASD on desktop · `P` / `Esc` to pause.
 
-**Mobile:** swipe anywhere on the maze, or use the on-screen pad (slide your finger between
-arrows without lifting it). Phones get vibration feedback, go fullscreen and keep the screen
-awake during a round (where the browser allows it), and switch to a compact side-pad layout in
-landscape. Rendering is automatically lighter on phones (lower pixel ratio, smaller shadow map,
-and a low-graphics fallback if the frame rate drops).
+**Mobile:** swipe anywhere on the screen to steer — keep your finger moving to turn corners
+without lifting it. There are no on-screen buttons, so the maze uses the whole screen (tall
+phones get extra maze rows). Phones get vibration feedback, go fullscreen and keep the screen
+awake during a round (where the browser allows it). Rendering is automatically lighter on phones.
+
+**Tutorial:** a short 4-card "how to play" (swipe, packs, skeletons, 60 seconds) appears
+before a player's first game; on phones the first card lets them practise a swipe. It can be
+reopened any time from **How to play** on the start screen.
 
 ### Rules & scoring (from the campaign brief)
 

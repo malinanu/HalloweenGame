@@ -51,13 +51,6 @@
 
   <div id="toast"></div>
 
-  <div id="dpad" class="hidden" aria-hidden="true">
-    <button data-dir="n">▲</button>
-    <button data-dir="w">◀</button>
-    <button data-dir="e">▶</button>
-    <button data-dir="s">▼</button>
-  </div>
-
   <!-- Loading -->
   <section id="screen-loading" class="screen show">
     <div class="panel center">
@@ -82,10 +75,46 @@
       <button class="btn big" id="btn-play">▶ ENTER THE MAZE</button>
       <p class="controls muted">Arrow keys / WASD · Swipe or use the D-pad on mobile · P to pause</p>
       <div class="row">
+        <button class="btn ghost" id="btn-howto">❓ How to play</button>
         <button class="btn ghost" id="btn-rules">Rules &amp; Prizes</button>
         <button class="btn ghost" id="btn-board">🏆 Leaderboard</button>
       </div>
       <p class="tagline"><span class="o">COLLECT.</span> <span class="g">SURVIVE.</span> <span class="r">WIN.</span></p>
+    </div>
+  </section>
+
+  <!-- Tutorial -->
+  <section id="screen-tutorial" class="screen">
+    <div class="panel tut">
+      <div class="tut-cards">
+        <div class="tut-card">
+          <div class="tut-art swipe-art"><span class="finger">👆</span><span class="trail"></span></div>
+          <h2 class="title">Swipe to move</h2>
+          <p class="tut-touch">Swipe <b>anywhere</b> on the screen — up, down, left or right. Keep your finger moving to turn corners.</p>
+          <p class="tut-keys">Use the <b>arrow keys</b> or <b>W A S D</b>. You can also drag with the mouse.</p>
+          <p class="tut-try tut-touch">👉 Try it now: swipe in any direction</p>
+        </div>
+        <div class="tut-card">
+          <div class="tut-art packs-art" id="tut-packs"></div>
+          <h2 class="title">Collect the packs</h2>
+          <p>Every Maliban pack is <b id="tut-pack-pts"></b>. Grab <b>all five flavours</b> for a <b id="tut-five-pts"></b> bonus!</p>
+        </div>
+        <div class="tut-card">
+          <div class="tut-art"><span class="big-emoji wobble">💀</span></div>
+          <h2 class="title">Dodge the skeletons</h2>
+          <p>Five monsters roam the maze. You have <b>3 lives</b> — each touch costs one.</p>
+        </div>
+        <div class="tut-card">
+          <div class="tut-art"><span class="big-emoji">⏱️</span></div>
+          <h2 class="title">Survive 60 seconds</h2>
+          <p>Every life left at the end is worth <b id="tut-life-pts"></b>. Then submit your score and climb the leaderboard!</p>
+        </div>
+      </div>
+      <div class="tut-dots" id="tut-dots"></div>
+      <div class="row">
+        <button class="btn ghost" id="tut-skip">Skip</button>
+        <button class="btn big" id="tut-next">Next ▶</button>
+      </div>
     </div>
   </section>
 

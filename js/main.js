@@ -7,7 +7,8 @@ import { startSession, fetchBoard, submitScore, personalBest, savePersonalBest }
 
 const $ = (s) => document.querySelector(s);
 const screens = [...document.querySelectorAll('.screen')];
-let touch = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0 && matchMedia('(hover: none)').matches;
+const touch = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0 && matchMedia('(hover: none)').matches;
+document.body.classList.toggle('touch', touch);
 
 let game;
 let session = null;
@@ -20,7 +21,6 @@ function show(id) {
   screens.forEach((s) => s.classList.toggle('show', s.id === id));
   const ingame = !id;
   $('#top').classList.toggle('hidden', !ingame && id !== 'screen-pause');
-  $('#dpad').classList.toggle('hidden', !(ingame && touch));
   game?.fitCamera();
 }
 
@@ -29,7 +29,7 @@ const hearts = $('#hud-lives');
 const flavourBar = $('#flavours');
 flavourBar.innerHTML = PRODUCTS.map((p) => `<i data-id="${p.id}" title="${p.name}" style="background:${p.color};color:${p.color}"></i>`).join('');
 $('#rules-flavours').innerHTML = PRODUCTS.map((p) => `<span style="background:${p.color}">${p.name}</span>`).join('');
-if (touch) $('.controls').textContent = 'Swipe anywhere on the maze or slide on the pad to steer · tap ❚❚ to pause';
+if (touch) $('.controls').textContent = 'Swipe anywhere to steer · tap ❚❚ to pause';
 $('#r-pack').textContent = `${SCORING.perPack} pts`;
 $('#r-five').textContent = `+${SCORING.allFiveBonus} pts`;
 $('#r-life').textContent = `+${SCORING.perLifeLeft} pts`;
@@ -69,12 +69,8 @@ const hooks = {
   insets() {
     const hudVisible = !$('#top').classList.contains('hidden');
     const top = hudVisible ? $('#top').getBoundingClientRect().bottom + 4 : 12;
-    const pad = $('#dpad');
-    if (pad.classList.contains('hidden')) return { top, bottom: 12 };
-    const r = pad.getBoundingClientRect();
-    // Landscape phones put the pad at the side; portrait puts it under the maze.
-    if (r.left > innerWidth * 0.6) return { top, bottom: 8, right: innerWidth - r.left + 8, left: 8 };
-    return { top, bottom: innerHeight - r.top + 6 };
+    const safeBottom = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--safe-bottom')) || 0;
+    return { top, bottom: 12 + safeBottom };
   },
   haptic(pattern) {
     if (touch && navigator.vibrate) { try { navigator.vibrate(pattern); } catch { /* ignore */ } }
@@ -98,7 +94,58 @@ function releaseWakeLock() {
   wakeLock = null;
 }
 
-let hinted = false;
+// ---------------------------------------------------------------- tutorial
+const TUT_KEY = 'maliban_tutorial_seen';
+const tutCards = [...document.querySelectorAll('.tut-card')];
+let tutIndex = 0;
+let tutThen = null; // what to do when the tutorial closes
+$('#tut-packs').innerHTML = PRODUCTS.map((p) => `<i style="background:${p.color};color:${p.color}"></i>`).join('');
+$('#tut-pack-pts').textContent = `${SCORING.perPack} points`;
+$('#tut-five-pts').textContent = `+${SCORING.allFiveBonus}`;
+$('#tut-life-pts').textContent = `+${SCORING.perLifeLeft} points`;
+$('#tut-dots').innerHTML = tutCards.map(() => '<i></i>').join('');
+
+function tutorialSeen() { try { return localStorage.getItem(TUT_KEY) === '1'; } catch { return false; } }
+function showTutCard(i) {
+  tutIndex = i;
+  tutCards.forEach((c, k) => c.classList.toggle('on', k === i));
+  document.querySelectorAll('#tut-dots i').forEach((d, k) => d.classList.toggle('on', k === i));
+  $('#tut-next').textContent = i === tutCards.length - 1 ? "Let's go! ▶" : 'Next ▶';
+}
+function openTutorial(then) {
+  tutThen = then;
+  showTutCard(0);
+  show('screen-tutorial');
+}
+function closeTutorial() {
+  try { localStorage.setItem(TUT_KEY, '1'); } catch { /* ignore */ }
+  const then = tutThen;
+  tutThen = null;
+  if (then) then(); else show('screen-start');
+}
+function tutNext() {
+  if (tutIndex < tutCards.length - 1) showTutCard(tutIndex + 1);
+  else closeTutorial();
+}
+$('#tut-next').addEventListener('click', tutNext);
+$('#tut-skip').addEventListener('click', closeTutorial);
+// Swiping on the tutorial practises the control and moves to the next card.
+{
+  const tut = $('#screen-tutorial');
+  let sx = 0, sy = 0, id = null;
+  tut.addEventListener('pointerdown', (e) => { if (!e.target.closest('button')) { sx = e.clientX; sy = e.clientY; id = e.pointerId; } });
+  tut.addEventListener('pointerup', (e) => {
+    if (e.pointerId !== id) return;
+    id = null;
+    if (Math.hypot(e.clientX - sx, e.clientY - sy) >= 40) { hooks.haptic(10); tutNext(); }
+  });
+}
+
+function startGame() {
+  if (tutorialSeen()) play();
+  else openTutorial(play);
+}
+
 async function play() {
   enterMobileMode();
   audio.ensure();
@@ -107,10 +154,6 @@ async function play() {
   $('#flavours').classList.remove('hidden');
   show(null);
   game.start();
-  if (touch && !hinted) {
-    hinted = true;
-    setTimeout(() => hooks.toast('SWIPE OR USE THE PAD', 'hint'), 200);
-  }
   session = await startSession();
 }
 
@@ -197,7 +240,8 @@ function togglePause() {
   if (game.state === 'paused') { game.resume(); show(null); }
   else if (game.pause()) show('screen-pause');
 }
-$('#btn-play').addEventListener('click', play);
+$('#btn-play').addEventListener('click', startGame);
+$('#btn-howto').addEventListener('click', () => openTutorial(null));
 $('#btn-again').addEventListener('click', play);
 $('#btn-rules').addEventListener('click', () => show('screen-rules'));
 $('#btn-board').addEventListener('click', () => openBoard('daily'));
@@ -238,13 +282,8 @@ document.addEventListener('touchend', (e) => {
     $('#screen-loading .muted').textContent = 'Failed to load game assets. Please refresh.';
     return;
   }
-  const input = new Input($('#game'), $('#dpad'));
+  const input = new Input();
   input.onSteer = () => hooks.haptic(6);
-  input.onTouch = () => {
-    if (touch) return;
-    touch = true; // hybrid laptop/tablet: reveal the pad once the screen is touched
-    if (game.state === 'playing' || game.state === 'countdown') show(null);
-  };
   input.onPause = () => { if (game.state === 'playing' || game.state === 'paused' || game.state === 'countdown') togglePause(); };
   game = new Game($('#game'), assets, audio, input, hooks);
   game.attract();
