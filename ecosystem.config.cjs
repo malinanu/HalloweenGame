@@ -19,7 +19,7 @@ module.exports = {
     cwd: __dirname,
     env: {
       NODE_ENV: 'production',
-      PORT: process.env.PORT || 3000,
+      PORT: process.env.PORT || 3087,
       DATA_DIR: path.join(__dirname, 'data'),
       ...env,
     },

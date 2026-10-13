@@ -66,7 +66,7 @@ put it behind HTTPS.
 rsyncs the files over SSH, (re)starts the app with PM2 and checks it responds.
 
 **1. On CloudPanel:** *Add Site → Create a Node.js Site*, pick a Node version and an **App Port**
-(e.g. `3000`). Note the site user and the site root, e.g. `/home/maliban/htdocs/game.example.com`.
+(e.g. `3087` — pick one no other app uses; check with `ss -tlnp`). Note the site user and the site root, e.g. `/home/maliban/htdocs/game.example.com`.
 Enable Let's Encrypt for HTTPS.
 
 **2. SSH key:** generate a key pair just for deploys and add the public key to the site user
@@ -85,7 +85,7 @@ ssh-keyscan -p 22 your.server.ip      # output -> SSH_KNOWN_HOSTS
 | `SSH_HOST` | `203.0.113.10` | yes |
 | `SSH_USER` | `maliban` (the CloudPanel site user) | yes |
 | `DEPLOY_PATH` | `/home/maliban/htdocs/game.example.com` | yes |
-| `APP_PORT` | `3000` — must match the App Port set in CloudPanel | default `3000` |
+| `APP_PORT` | `3087` — must match the App Port set in CloudPanel | default `3087` |
 | `SSH_PORT` | `22` | default `22` |
 | `SSH_KNOWN_HOSTS` | output of `ssh-keyscan` | recommended (otherwise the host key is trusted on first use) |
 

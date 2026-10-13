@@ -63,7 +63,7 @@ jobs:
       - name: Restart app
         env:
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
-          APP_PORT: ${{ secrets.APP_PORT || '3000' }}
+          APP_PORT: ${{ secrets.APP_PORT || '3087' }}
         run: |
           ssh cloudpanel "DEPLOY_PATH='$DEPLOY_PATH' APP_PORT='$APP_PORT' bash -s" <<'REMOTE'
           set -e
@@ -78,7 +78,7 @@ jobs:
 
       - name: Health check
         env:
-          APP_PORT: ${{ secrets.APP_PORT || '3000' }}
+          APP_PORT: ${{ secrets.APP_PORT || '3087' }}
         run: |
           for i in 1 2 3 4 5; do
             if ssh cloudpanel "curl -fsS http://127.0.0.1:$APP_PORT/api/leaderboard?limit=1" ; then exit 0; fi
