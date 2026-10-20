@@ -67,6 +67,22 @@ export class Audio {
     this.tone(base * 2, 0.2, { type: 'sine', vol: 0.15, at: 0.07 });
   }
 
+  // a thwack: low thump + short noise crack, pitched up a little with the combo
+  smash(combo = 1) {
+    this.noise(0.12, { vol: 0.45, filter: 2400 });
+    this.tone(160 * Math.pow(2, Math.min(combo, 8) / 24), 0.18, { type: 'triangle', vol: 0.35, slide: 0.45 });
+    if (combo > 1) this.tone(660 * Math.pow(2, Math.min(combo, 8) / 12), 0.08, { type: 'square', vol: 0.06, at: 0.03 });
+  }
+
+  pop() { this.tone(300 + Math.random() * 120, 0.07, { type: 'sine', vol: 0.06, slide: 1.8 }); }
+
+  miss() { this.tone(180, 0.1, { type: 'sine', vol: 0.08, slide: 0.7 }); }
+
+  meow() {
+    this.tone(700, 0.18, { type: 'sawtooth', vol: 0.07, slide: 1.4, at: 0.05 });
+    this.tone(950, 0.25, { type: 'sawtooth', vol: 0.06, slide: 0.6, at: 0.22 });
+  }
+
   bonus() {
     [523, 659, 784, 1047, 1319].forEach((f, i) => this.tone(f, 0.22, { type: 'triangle', vol: 0.2, at: i * 0.07 }));
   }

@@ -1,7 +1,7 @@
 {
-  "title": ["SPOOKY", "MAZE RUNNER"],
+  "title": ["PUMPKIN", "SMASH"],
   "logo": null,
-  "tagline": ["COLLECT.", "SURVIVE.", "WIN."],
+  "tagline": ["SMASH.", "COLLECT.", "WIN."],
   "colors": { "primary": "#ff8a1f", "secondary": "#7dff3a" },
   "item": { "one": "treat bag", "many": "treat bags", "shape": "bag" },
   "label": { "brand": "SPOOKY", "tagline": "TREATS" },
@@ -16,5 +16,7 @@
     "daily": "Daily winners receive treat bundles.",
     "weekly": "Weekly leaders receive bigger gift packs.",
     "final": "Final leaderboard winners receive the main prizes."
-  }
+  },
+  "credit": "Property of 3logiq",
+  "leaderboard": { "requirePhone": false, "phoneCountry": "LK" }
 }

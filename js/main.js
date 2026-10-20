@@ -29,7 +29,7 @@ function show(id) {
 // ---------------------------------------------------------------- HUD hooks
 const hearts = $('#hud-lives');
 const flavourBar = $('#flavours');
-if (touch) $('.controls').textContent = 'Swipe anywhere to steer · tap ❚❚ to pause';
+if (touch) $('.controls').textContent = 'Tap the monsters · tap ❚❚ to pause';
 const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
 
 // Everything the vendor file controls: name, logo, colours, collectibles, prizes.
@@ -50,15 +50,22 @@ function applyVendor(v) {
   const words = { one: v.item.one, many: v.item.many, Many: cap(v.item.many) };
   document.querySelectorAll('[data-v]').forEach((el) => { el.textContent = words[el.dataset.v] ?? ''; });
   ['daily', 'weekly', 'final'].forEach((k) => { $(`#prize-${k}`).textContent = v.prizes[k]; });
+  $('#watermark').textContent = v.credit;
+  $('#watermark').classList.toggle('hidden', !v.credit);
+  $('#phone-field').classList.toggle('hidden', !v.leaderboard.requirePhone);
+  $('#in-phone').required = v.leaderboard.requirePhone;
+  if (v.leaderboard.phoneCountry !== 'LK') $('#in-phone').placeholder = '+44 7700 900123';
 
   flavourBar.innerHTML = v.items.map((p) => `<i data-id="${p.id}" title="${escapeHtml(p.name)}" style="background:${p.color};color:${p.color}"></i>`).join('');
   $('#rules-flavours').innerHTML = v.items.map((p) => `<span style="background:${p.color}">${escapeHtml(p.name)}</span>`).join('');
   $('#tut-packs').innerHTML = v.items.map((p) => `<i class="shape-${v.item.shape}" style="background:${p.color};color:${p.color}"></i>`).join('');
   $('#rules-scoring').innerHTML = [
-    [`Each ${v.item.one} collected`, `${SCORING.perPack} pts`],
-    [`Combo: ${v.item.many} grabbed within ${SCORING.comboWindowSec}s of each other`, `up to ×${SCORING.comboMax}`],
-    [`Speed: grab a ${v.item.one} soon after it appears`, `+${SCORING.speedBonusMax} → 0`],
-    ['Near miss: escape a skeleton up close', `+${SCORING.nearMiss}`],
+    ['Smash a skeleton', `${SCORING.skeleton} pts`],
+    ['Smash a ghost', `${SCORING.ghost} pts`],
+    ['Smash a bat', `${SCORING.bat} pts`],
+    ['Combo: smashes in a row without a miss', `up to ×${SCORING.comboMax}`],
+    ['Speed: smash it right after it pops up', `+${SCORING.speedBonusMax} → 0`],
+    [`Each ${v.item.one} collected`, `${SCORING.perItem} pts`],
     ['Every full set (one of each of the five kinds)', `+${SCORING.fullSet}`],
     ['Every second survived', `+${SCORING.perSecondSurvived}`],
     ['Each life left when time runs out', `+${SCORING.perLifeLeft}`],
@@ -130,9 +137,8 @@ const TUT_KEY = 'smr_tutorial_seen';
 const tutCards = [...document.querySelectorAll('.tut-card')];
 let tutIndex = 0;
 let tutThen = null; // what to do when the tutorial closes
-$('#tut-pack-pts').textContent = `${SCORING.perPack} points`;
+$('#tut-pack-pts').textContent = `${SCORING.perItem} points`;
 $('#tut-five-pts').textContent = `+${SCORING.fullSet}`;
-$('#tut-near-pts').textContent = `+${SCORING.nearMiss}`;
 $('#tut-sec-pts').textContent = `+${SCORING.perSecondSurvived}`;
 $('#tut-life-pts').textContent = `+${SCORING.perLifeLeft} points`;
 $('#tut-dots').innerHTML = tutCards.map(() => '<i></i>').join('');
@@ -169,7 +175,7 @@ $('#tut-skip').addEventListener('click', closeTutorial);
   tut.addEventListener('pointerup', (e) => {
     if (e.pointerId !== id) return;
     id = null;
-    if (Math.hypot(e.clientX - sx, e.clientY - sy) >= 40) { hooks.haptic(10); tutNext(); }
+    if (Math.hypot(e.clientX - sx, e.clientY - sy) < 30) { hooks.haptic(10); tutNext(); } // a tap practises the control
   });
 }
 
@@ -195,15 +201,15 @@ function gameOver(result) {
   submitted = false;
   const best = personalBest();
   savePersonalBest(result.score);
-  $('#over-title').textContent = result.reason === 'time' ? "Time's up — you survived!" : 'The skeletons got you!';
+  $('#over-title').textContent = result.reason === 'time' ? "Time's up!" : 'Out of lives — poor kitty!';
   $('#over-score').textContent = result.score.toLocaleString();
   $('#over-best').textContent = result.score > best ? '★ New personal best!' : `Personal best: ${best.toLocaleString()}`;
   const lifeBonus = result.reason === 'time' ? result.livesLeft * SCORING.perLifeLeft : 0;
   $('#over-breakdown').innerHTML = [
-    [`${cap(VENDOR.item.many)} (${result.packs} × ${SCORING.perPack})`, result.packs * SCORING.perPack],
+    [`Smashes (${result.smashes})`, result.basePoints],
     ['Combo bonus', result.comboPoints],
     ['Speed bonus', result.speedPoints],
-    [`Near misses (${result.nearMisses} × ${SCORING.nearMiss})`, result.nearMisses * SCORING.nearMiss],
+    [`${cap(VENDOR.item.many)} (${result.items} × ${SCORING.perItem})`, result.items * SCORING.perItem],
     [`Full sets (${result.sets} × ${SCORING.fullSet})`, result.sets * SCORING.fullSet],
     [`Survived ${result.survivedSec}s (× ${SCORING.perSecondSurvived})`, result.survivedSec * SCORING.perSecondSurvived],
     [`Lives left (${result.livesLeft} × ${SCORING.perLifeLeft})`, lifeBonus],
@@ -224,22 +230,27 @@ $('#submit-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   if (submitted || !lastResult) return;
   const name = $('#in-name').value.trim().replace(/\s+/g, ' ');
-  const phone = $('#in-phone').value.trim();
+  const needPhone = VENDOR.leaderboard.requirePhone;
+  const phone = needPhone ? $('#in-phone').value.trim() : '';
   const msg = $('#submit-msg');
   if (name.length < 2) { msg.textContent = 'Please enter a name (2–16 characters).'; msg.className = 'msg err'; return; }
-  if (!normalizeMobile(phone)) { msg.textContent = 'Please enter a valid mobile number (07X XXX XXXX).'; msg.className = 'msg err'; return; }
+  if (needPhone && !normalizeMobile(phone, VENDOR.leaderboard.phoneCountry)) {
+    msg.textContent = VENDOR.leaderboard.phoneCountry === 'LK' ? 'Please enter a valid mobile number (07X XXX XXXX).' : 'Please enter a valid mobile number with country code.';
+    msg.className = 'msg err';
+    return;
+  }
   $('#btn-submit').disabled = true;
   msg.textContent = 'Submitting…';
   msg.className = 'msg';
   try {
-    try { localStorage.setItem('smr_name', name); localStorage.setItem('smr_phone', phone); } catch { /* ignore */ }
+    try { localStorage.setItem('smr_name', name); if (needPhone) localStorage.setItem('smr_phone', phone); } catch { /* ignore */ }
     const r = await submitScore({ session, name, phone, ...lastResult });
     submitted = true;
     msg.textContent = r.improved
       ? `New best! You're #${r.rank} today.`
       : `Saved. Your best today is still ${r.best.toLocaleString()} (#${r.rank}).`;
     msg.className = 'msg ok';
-    setTimeout(() => openBoard('daily', { name, tag: mobileTag(normalizeMobile(phone)) }), 1200);
+    setTimeout(() => openBoard('daily', { name, tag: mobileTag(normalizeMobile(phone, VENDOR.leaderboard.phoneCountry)) }), 1200);
   } catch (err) {
     msg.textContent = err.message || 'Could not submit score.';
     msg.className = 'msg err';
@@ -260,13 +271,15 @@ async function renderBoard() {
       return `<li class="${me ? 'me' : ''}"><span class="rk">${e.rank === 1 ? '👑 1' : e.rank}</span><span class="nm">${escapeHtml(e.name)} <small class="tag">${escapeHtml(e.tag || '')}</small></span><span class="sc">${e.score.toLocaleString()}</span></li>`;
     }).join('')
     : '<li class="empty">No scores yet — be the first!</li>';
-  $('#lb-note').textContent = source === 'local' ? 'Offline mode: showing scores saved on this device.' : 'One entry per mobile number — only your best score counts. Prizes for daily & weekly leaders!';
+  $('#lb-note').textContent = source === 'local' ? 'Offline mode: showing scores saved on this device.' : (VENDOR.leaderboard.requirePhone ? 'One entry per mobile number — ' : '') + 'Only your best score counts. Prizes for daily & weekly leaders!';
 }
 function savedPlayer() {
   try {
     const name = localStorage.getItem('smr_name');
-    const phone = normalizeMobile(localStorage.getItem('smr_phone'));
-    return name && phone ? { name, tag: mobileTag(phone) } : null;
+    if (!name) return null;
+    if (!VENDOR.leaderboard.requirePhone) return { name, tag: '' };
+    const phone = normalizeMobile(localStorage.getItem('smr_phone'), VENDOR.leaderboard.phoneCountry);
+    return phone ? { name, tag: mobileTag(phone) } : null;
   } catch { return null; }
 }
 function openBoard(period = boardPeriod, me = highlight || savedPlayer()) {
@@ -338,6 +351,8 @@ document.addEventListener('touchend', (e) => {
     $('#screen-loading .muted').textContent = 'Failed to load game assets. Please refresh.';
     return;
   }
+  // item labels are drawn on canvas with the game font: make sure it's loaded first
+  await Promise.race([document.fonts?.load('36px "Luckiest Guy"'), new Promise((r) => setTimeout(r, 1500))]).catch(() => {});
   const input = new Input();
   input.onSteer = () => hooks.haptic(6);
   input.onPause = () => { if (game.state === 'playing' || game.state === 'paused' || game.state === 'countdown') togglePause(); };

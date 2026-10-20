@@ -8,6 +8,20 @@ import { VENDOR } from './vendor.js';
 const LOCAL_KEY = 'smr_local_scores';
 let serverAvailable = null;
 
+// Anonymous per-browser id: identifies a player when the vendor doesn't collect phone numbers.
+export function deviceId() {
+  try {
+    let id = localStorage.getItem('smr_device');
+    if (!id) {
+      id = (crypto.randomUUID?.() || `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`).replace(/-/g, '').slice(0, 24);
+      localStorage.setItem('smr_device', id);
+    }
+    return id;
+  } catch {
+    return `tmp${Math.random().toString(36).slice(2, 14)}`;
+  }
+}
+
 async function api(path, opts = {}) {
   const res = await fetch(`${API_BASE}${path}`, {
     headers: { 'Content-Type': 'application/json' },
@@ -45,20 +59,20 @@ export async function fetchBoard(period = 'daily', limit = 10) {
 export async function submitScore(payload) {
   if (serverAvailable !== false && payload.session) {
     try {
-      const data = await api('/scores', { method: 'POST', body: JSON.stringify({ ...payload, vendor: VENDOR.id }) });
+      const data = await api('/scores', { method: 'POST', body: JSON.stringify({ ...payload, vendor: VENDOR.id, device: deviceId() }) });
       return { ...data, source: 'server' };
     } catch (e) {
       if (e.status && e.status < 500) throw e; // validation errors are real
       serverAvailable = false;
     }
   }
-  const phone = normalizeMobile(payload.phone);
-  const entry = { ...payload, vendor: VENDOR.id, phone, ts: Date.now() };
+  const phone = VENDOR.leaderboard.requirePhone ? normalizeMobile(payload.phone, VENDOR.leaderboard.phoneCountry) : null;
+  const entry = { ...payload, vendor: VENDOR.id, phone, device: deviceId(), ts: Date.now() };
   delete entry.session;
   const list = readLocal();
   list.push(entry);
   writeLocal(list);
-  const mine = rankBoard(list, periodStart('daily'), VENDOR.id).find((e) => e.phone === phone);
+  const mine = rankBoard(list, periodStart('daily'), VENDOR.id).find((e) => e.ts === entry.ts || (phone ? e.phone === phone : e.device === entry.device));
   return { ok: true, rank: mine.rank, best: mine.score, improved: mine.ts === entry.ts, tag: mobileTag(phone), source: 'local' };
 }
 
@@ -75,7 +89,7 @@ function periodStart(period) {
 
 function localBoard(period, limit) {
   return rankBoard(readLocal(), periodStart(period), VENDOR.id).slice(0, limit)
-    .map((e) => ({ rank: e.rank, name: e.name, tag: mobileTag(e.phone), score: e.score, packs: e.packs }));
+    .map((e) => ({ rank: e.rank, name: e.name, tag: mobileTag(e.phone), score: e.score, smashes: e.smashes }));
 }
 
 function readLocal() {

@@ -1,10 +1,13 @@
 {
-  "name": "spooky-maze-runner",
+  "name": "pumpkin-smash",
   "version": "1.0.0",
   "private": true,
-  "description": "Spooky Maze Runner — Halloween maze runner: collect treat bags, dodge skeletons, top the leaderboard.",
+  "description": "Pumpkin Smash — a re-skinnable Halloween HTML5 tap game with an optional leaderboard server.",
+  "author": "3logiq",
+  "license": "SEE LICENSE IN documentation/index.html",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "package": "node tools/package.js"
   },
-  "engines": { "node": ">=24" }
+  "engines": { "node": ">=18" }
 }

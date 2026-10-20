@@ -14,7 +14,7 @@ try {
 
 module.exports = {
   apps: [{
-    name: 'spooky-maze-runner',
+    name: 'pumpkin-smash',
     script: 'server.js',
     cwd: __dirname,
     env: {

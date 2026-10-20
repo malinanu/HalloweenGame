@@ -6,7 +6,7 @@ const SKELETONS = 'assets/models/skeletons/';
 const VFX = 'assets/vfx/';
 
 export const DUNGEON_MODELS = [
-  'wall', 'pillar', 'floor_tile_large', 'torch_lit', 'torch_mounted',
+  'wall', 'pillar', 'floor_tile_large', 'torch_lit',
   'barrel_small', 'keg', 'candle_triple', 'crates_stacked', 'rubble_half',
 ];
 const SKELETON_MODELS = ['Skeleton_Warrior', 'Skeleton_Rogue', 'Skeleton_Mage', 'Skeleton_Minion'];

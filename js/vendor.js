@@ -58,5 +58,15 @@ export function normalizeVendor(v, id, base = '') {
       return { id: ITEM_SLOTS[i], name: it.name, color: it.color, accent: HEX.test(it.accent || '') ? it.accent : '#ffffff', image: it.image ? base + it.image : null };
     }),
     prizes: { daily: 'Daily winners receive prize bundles.', weekly: 'Weekly leaders receive bigger prizes.', final: 'Final leaderboard winners receive the main prizes.', ...(v.prizes || {}) },
+    credit: typeof v.credit === 'string' ? v.credit : 'Property of 3logiq',
+    leaderboard: normalizeBoard(v.leaderboard, fail),
   };
+}
+
+// Leaderboard identity: a mobile number (prize campaigns) or, by default, a per-device id.
+export function normalizeBoard(b = {}, fail = (m) => { throw new Error(m); }) {
+  const out = { requirePhone: false, phoneCountry: 'LK', ...(b || {}) };
+  if (!['LK', 'any'].includes(out.phoneCountry)) fail('"leaderboard.phoneCountry" must be "LK" or "any"');
+  out.requirePhone = out.requirePhone === true;
+  return out;
 }

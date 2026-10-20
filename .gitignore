@@ -6,3 +6,4 @@ maliban_deploy*
 spooky_deploy*
 *.pem
 *.key
+dist/

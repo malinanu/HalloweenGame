@@ -8,11 +8,11 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="format-detection" content="telephone=no">
-  <title>Spooky Maze Runner</title>
-  <meta name="description" content="Halloween maze runner: collect, dodge the skeletons, top the leaderboard.">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Creepster&family=Luckiest+Guy&family=Nunito:wght@600;800&display=swap" rel="stylesheet">
+  <title>Pumpkin Smash</title>
+  <meta name="description" content="Pumpkin Smash — a Halloween tap game: smash the monsters, collect the treats, top the leaderboard.">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+  <link rel="apple-touch-icon" href="assets/icon-192.png">
+  <link rel="stylesheet" href="assets/fonts/fonts.css">
   <link rel="stylesheet" href="css/style.css">
   <script type="importmap">
     { "imports": {
@@ -33,7 +33,7 @@
     <div class="bats"><span>🦇</span><span>🦇</span><span>🦇</span></div>
   </div>
 
-  <canvas id="game" aria-label="Maze game"></canvas>
+  <canvas id="game" aria-label="Pumpkin Smash game"></canvas>
   <div id="flash"></div>
   <div id="popups"></div>
 
@@ -65,15 +65,15 @@
     <div class="panel">
       <div class="v-logo"></div><h2 class="logo big v-title" data-break></h2>
       <ol class="steps">
-        <li><b>Enter</b> the haunted maze.</li>
-        <li><b>Collect</b> as many <span data-v="many"></span> as you can.</li>
-        <li><b>Avoid</b> the five skeleton monsters.</li>
-        <li><b>Survive</b> until the 60 seconds run out.</li>
+        <li><b>Smash</b> the skeletons, ghosts and bats as they pop up.</li>
+        <li><b>Collect</b> the <span data-v="many"></span> — a full set earns a big bonus.</li>
+        <li><b>Don't smash</b> the black cat — it costs a life.</li>
+        <li><b>Keep going</b> until the 60 seconds run out.</li>
         <li><b>Submit</b> your score to the leaderboard.</li>
         <li><b>Compete</b> to win prizes!</li>
       </ol>
-      <button class="btn big" id="btn-play">▶ ENTER THE MAZE</button>
-      <p class="controls muted">Arrow keys / WASD or drag with the mouse · P to pause</p>
+      <button class="btn big" id="btn-play">▶ PLAY</button>
+      <p class="controls muted">Click the monsters · keys 1–9 hit the graves · P to pause</p>
       <div class="row">
         <button class="btn ghost" id="btn-howto">❓ How to play</button>
         <button class="btn ghost" id="btn-rules">Rules &amp; Prizes</button>
@@ -88,28 +88,26 @@
     <div class="panel tut">
       <div class="tut-cards">
         <div class="tut-card">
-          <div class="tut-art swipe-art"><span class="finger">👆</span><span class="trail"></span></div>
-          <h2 class="title">Swipe to move</h2>
-          <p class="tut-touch">Swipe <b>anywhere</b> on the screen — up, down, left or right. Keep your finger moving to turn corners.</p>
-          <p class="tut-keys">Use the <b>arrow keys</b> or <b>W A S D</b>. You can also drag with the mouse.</p>
-          <p class="tut-try tut-touch">👉 Try it now: swipe in any direction</p>
+          <div class="tut-art tap-art"><span class="target">💀</span><span class="finger">👆</span><span class="boom"></span></div>
+          <h2 class="title">Tap to smash</h2>
+          <p>Skeletons, ghosts and bats pop out of the graves. <b>Tap them fast</b> — the quicker you are, the more points. Smash several in a row for a <b>combo</b>!</p>
+          <p class="tut-try">👉 Try it: tap anywhere</p>
         </div>
         <div class="tut-card">
           <div class="tut-art packs-art" id="tut-packs"></div>
           <h2 class="title">Collect the <span data-v="many"></span></h2>
-          <p>Every <span data-v="one"></span> is <b id="tut-pack-pts"></b>. Grab them <b>quickly one after another</b> for combo points, and every <b>full set of all five kinds</b> earns <b id="tut-five-pts"></b>!</p>
+          <p>Every <span data-v="one"></span> you tap is <b id="tut-pack-pts"></b>. Collect <b>one of each of the five kinds</b> for a <b id="tut-five-pts"></b> full-set bonus!</p>
         </div>
         <div class="tut-card">
-          <div class="tut-art"><span class="big-emoji wobble">💀</span></div>
-          <h2 class="title">Dodge the skeletons</h2>
-          <p>Five monsters roam the maze. You have <b>3 lives</b> — each touch costs one. Slip past one up close for a <b id="tut-near-pts"></b> near-miss bonus!</p>
+          <div class="tut-art"><span class="big-emoji wobble">🐈‍⬛</span></div>
+          <h2 class="title">Don't smash the cat!</h2>
+          <p>The black cat is friendly. Tap it and you <b>lose a life</b> — you only have <b>3</b>.</p>
         </div>
         <div class="tut-card">
           <div class="tut-art"><span class="big-emoji">⏱️</span></div>
-          <h2 class="title">Survive 60 seconds</h2>
-          <p>Every second survived scores <b id="tut-sec-pts"></b> and every life left at the end <b id="tut-life-pts"></b>. Then submit your score and climb the leaderboard!</p>
+          <h2 class="title">Last 60 seconds</h2>
+          <p>Every second scores <b id="tut-sec-pts"></b> and every life left at the end <b id="tut-life-pts"></b>. It gets faster as time runs out!</p>
         </div>
-      </div>
       <div class="tut-dots" id="tut-dots"></div>
       <div class="row">
         <button class="btn ghost" id="tut-skip">Skip</button>
@@ -124,14 +122,15 @@
       <h2 class="title">Game Rules</h2>
       <ul class="rules">
         <li>You have <b>60 seconds</b> and <b>three lives</b>.</li>
-        <li><span data-v="Many"></span> appear throughout the maze — every one adds points.</li>
-        <li>Touching a skeleton removes one life.</li>
+        <li>Monsters pop out of the graves — tap them before they sink back.</li>
+        <li><span data-v="Many"></span> pop up too — tap to collect them.</li>
+        <li>Tapping the black cat removes one life. Missing a tap breaks your combo.</li>
         <li>The game ends when time runs out or you lose all three lives.</li>
         <li>Submit your final score to the leaderboard. Come back any time to beat it!</li>
       </ul>
       <h2 class="title">Scoring</h2>
       <div class="score-table" id="rules-scoring"></div>
-      <p class="muted small">Ties are ranked by most packs, then most lives left, then longest survival, then whoever scored first.</p>
+      <p class="muted small">Ties are ranked by most smashes, then most lives left, then longest survival, then whoever scored first.</p>
       <div class="flavour-row" id="rules-flavours"></div>
       <h2 class="title">Rewards</h2>
       <ul class="rules">
@@ -175,8 +174,8 @@
       <div class="score-table" id="over-breakdown"></div>
       <form id="submit-form" autocomplete="on">
         <label>Your name <input id="in-name" name="nickname" maxlength="16" minlength="2" required placeholder="e.g. SpookySam"></label>
-        <label>Mobile number <em>(one leaderboard entry per number — used to contact winners)</em>
-          <input id="in-phone" name="tel" type="tel" maxlength="16" inputmode="tel" autocomplete="tel" required placeholder="07X XXX XXXX"></label>
+        <label id="phone-field" class="hidden">Mobile number <em>(one leaderboard entry per number — used to contact winners)</em>
+          <input id="in-phone" name="tel" type="tel" maxlength="18" inputmode="tel" autocomplete="tel" placeholder="07X XXX XXXX"></label>
         <button class="btn big" type="submit" id="btn-submit">Submit score</button>
         <p class="msg" id="submit-msg"></p>
       </form>
@@ -187,7 +186,7 @@
     </div>
   </section>
 
-  <div id="watermark" aria-hidden="true">Property of 3logiq</div>
+  <div id="watermark" aria-hidden="true"></div>
 
   <script type="module" src="js/main.js"></script>
 </body>
