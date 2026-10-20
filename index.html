@@ -10,9 +10,9 @@
   <meta name="format-detection" content="telephone=no">
   <title>Spooky Maze Runner</title>
   <meta name="description" content="Halloween maze runner: collect, dodge the skeletons, top the leaderboard.">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Creepster&family=Luckiest+Guy&family=Nunito:wght@600;800&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+  <link rel="apple-touch-icon" href="assets/icon-192.png">
+  <link rel="stylesheet" href="assets/fonts/fonts.css">
   <link rel="stylesheet" href="css/style.css">
   <script type="importmap">
     { "imports": {
@@ -33,7 +33,7 @@
     <div class="bats"><span>🦇</span><span>🦇</span><span>🦇</span></div>
   </div>
 
-  <canvas id="game" aria-label="Maze game"></canvas>
+  <canvas id="game" aria-label="Spooky Maze Runner game"></canvas>
   <div id="flash"></div>
   <div id="popups"></div>
 
@@ -175,8 +175,8 @@
       <div class="score-table" id="over-breakdown"></div>
       <form id="submit-form" autocomplete="on">
         <label>Your name <input id="in-name" name="nickname" maxlength="16" minlength="2" required placeholder="e.g. SpookySam"></label>
-        <label>Mobile number <em>(one leaderboard entry per number — used to contact winners)</em>
-          <input id="in-phone" name="tel" type="tel" maxlength="16" inputmode="tel" autocomplete="tel" required placeholder="07X XXX XXXX"></label>
+        <label id="phone-field" class="hidden">Mobile number <em>(one leaderboard entry per number — used to contact winners)</em>
+          <input id="in-phone" name="tel" type="tel" maxlength="18" inputmode="tel" autocomplete="tel" placeholder="07X XXX XXXX"></label>
         <button class="btn big" type="submit" id="btn-submit">Submit score</button>
         <p class="msg" id="submit-msg"></p>
       </form>
@@ -187,7 +187,7 @@
     </div>
   </section>
 
-  <div id="watermark" aria-hidden="true">Property of 3logiq</div>
+  <div id="watermark" aria-hidden="true"></div>
 
   <script type="module" src="js/main.js"></script>
 </body>

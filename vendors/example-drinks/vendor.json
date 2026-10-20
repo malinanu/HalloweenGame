@@ -1,20 +1,67 @@
 {
-  "title": ["FIZZ", "FRIGHT NIGHT"],
+  "title": [
+    "FIZZ",
+    "FRIGHT NIGHT"
+  ],
   "logo": null,
-  "tagline": ["GRAB.", "DODGE.", "WIN."],
-  "colors": { "primary": "#22d3ee", "secondary": "#f472b6" },
-  "item": { "one": "can", "many": "cans", "shape": "can" },
-  "label": { "brand": "FIZZ", "tagline": "SODA" },
+  "tagline": [
+    "GRAB.",
+    "DODGE.",
+    "WIN."
+  ],
+  "colors": {
+    "primary": "#22d3ee",
+    "secondary": "#f472b6"
+  },
+  "item": {
+    "one": "can",
+    "many": "cans",
+    "shape": "can"
+  },
+  "label": {
+    "brand": "FIZZ",
+    "tagline": "SODA"
+  },
   "items": [
-    { "name": "Cola",   "color": "#b91c1c", "accent": "#ffffff", "image": null },
-    { "name": "Orange", "color": "#f97316", "accent": "#fff7ed", "image": null },
-    { "name": "Lime",   "color": "#65a30d", "accent": "#f7fee7", "image": null },
-    { "name": "Grape",  "color": "#7e22ce", "accent": "#faf5ff", "image": null },
-    { "name": "Berry",  "color": "#db2777", "accent": "#fdf2f8", "image": null }
+    {
+      "name": "Cola",
+      "color": "#b91c1c",
+      "accent": "#ffffff",
+      "image": null
+    },
+    {
+      "name": "Orange",
+      "color": "#f97316",
+      "accent": "#fff7ed",
+      "image": null
+    },
+    {
+      "name": "Lime",
+      "color": "#65a30d",
+      "accent": "#f7fee7",
+      "image": null
+    },
+    {
+      "name": "Grape",
+      "color": "#7e22ce",
+      "accent": "#faf5ff",
+      "image": null
+    },
+    {
+      "name": "Berry",
+      "color": "#db2777",
+      "accent": "#fdf2f8",
+      "image": null
+    }
   ],
   "prizes": {
     "daily": "Daily winners receive a crate of FIZZ.",
     "weekly": "Weekly leaders receive a FIZZ party pack.",
     "final": "The overall champion wins a year of FIZZ."
+  },
+  "credit": "Property of 3logiq",
+  "leaderboard": {
+    "requirePhone": false,
+    "phoneCountry": "LK"
   }
 }

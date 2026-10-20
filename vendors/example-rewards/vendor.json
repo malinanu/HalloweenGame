@@ -1,20 +1,67 @@
 {
-  "title": ["REWARD", "RUSH"],
+  "title": [
+    "REWARD",
+    "RUSH"
+  ],
   "logo": null,
-  "tagline": ["COLLECT.", "ESCAPE.", "EARN."],
-  "colors": { "primary": "#facc15", "secondary": "#38bdf8" },
-  "item": { "one": "reward coin", "many": "reward coins", "shape": "coin" },
-  "label": { "brand": "REWARDS", "tagline": "POINTS" },
+  "tagline": [
+    "COLLECT.",
+    "ESCAPE.",
+    "EARN."
+  ],
+  "colors": {
+    "primary": "#facc15",
+    "secondary": "#38bdf8"
+  },
+  "item": {
+    "one": "reward coin",
+    "many": "reward coins",
+    "shape": "coin"
+  },
+  "label": {
+    "brand": "REWARDS",
+    "tagline": "POINTS"
+  },
   "items": [
-    { "name": "Bronze",   "color": "#b45309", "accent": "#fde68a", "image": null },
-    { "name": "Silver",   "color": "#94a3b8", "accent": "#f8fafc", "image": null },
-    { "name": "Gold",     "color": "#eab308", "accent": "#fef9c3", "image": null },
-    { "name": "Platinum", "color": "#0e7490", "accent": "#cffafe", "image": null },
-    { "name": "Diamond",  "color": "#7c3aed", "accent": "#ede9fe", "image": null }
+    {
+      "name": "Bronze",
+      "color": "#b45309",
+      "accent": "#fde68a",
+      "image": null
+    },
+    {
+      "name": "Silver",
+      "color": "#94a3b8",
+      "accent": "#f8fafc",
+      "image": null
+    },
+    {
+      "name": "Gold",
+      "color": "#eab308",
+      "accent": "#fef9c3",
+      "image": null
+    },
+    {
+      "name": "Platinum",
+      "color": "#0e7490",
+      "accent": "#cffafe",
+      "image": null
+    },
+    {
+      "name": "Diamond",
+      "color": "#7c3aed",
+      "accent": "#ede9fe",
+      "image": null
+    }
   ],
   "prizes": {
     "daily": "Daily winners receive bonus reward points.",
     "weekly": "Weekly leaders receive a gift voucher.",
     "final": "The overall champion wins the grand prize."
+  },
+  "credit": "Property of 3logiq",
+  "leaderboard": {
+    "requirePhone": true,
+    "phoneCountry": "LK"
   }
 }

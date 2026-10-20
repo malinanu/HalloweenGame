@@ -27,31 +27,43 @@ export function compareEntries(a, b) {
     || b.survivedSec - a.survivedSec || a.ts - b.ts;
 }
 
-// Sri Lankan mobile numbers in any common format -> "947XXXXXXXX", or null.
-export function normalizeMobile(raw) {
-  const m = String(raw || '').replace(/[\s\-().]/g, '').match(/^(?:\+94|0094|94|0)?(7\d{8})$/);
-  return m ? `94${m[1]}` : null;
+// Mobile numbers -> digits only with country code, or null.
+//   'LK'  Sri Lankan mobiles in any common format (07X…, 7X…, +94 7X…, 0094…) -> 947XXXXXXXX
+//   'any' any international number with 8–15 digits
+export function normalizeMobile(raw, country = 'LK') {
+  const clean = String(raw || '').replace(/[\s\-().]/g, '');
+  if (country === 'LK') {
+    const m = clean.match(/^(?:\+94|0094|94|0)?(7\d{8})$/);
+    return m ? `94${m[1]}` : null;
+  }
+  const m = clean.match(/^(?:\+|00)?(\d{8,15})$/);
+  return m ? m[1] : null;
 }
 
-export const mobileTag = (phone) => `••${String(phone).slice(-3)}`;
+export const mobileTag = (phone) => (phone ? `••${String(phone).slice(-3)}` : '');
 
 // Entries saved before vendors existed belong to the default vendor.
 export const vendorOf = (e) => e.vendor || DEFAULT_VENDOR;
 
-// One entry per mobile number (their best) for one vendor, ranked. `since` filters by submission time.
+// A player is their mobile number when the vendor collects one, otherwise their device id.
+export const playerKey = (e) => e.phone || (e.device ? `d:${e.device}` : null);
+
+// One entry per player (their best) for one vendor, ranked. `since` filters by submission time.
 export function rankBoard(entries, since = 0, vendor = DEFAULT_VENDOR) {
   const best = new Map();
   const latestName = new Map();
   for (const e of entries) {
-    if (!e.phone || vendorOf(e) !== vendor) continue; // skip legacy entries without a mobile number
-    const prev = latestName.get(e.phone);
-    if (!prev || e.ts > prev.ts) latestName.set(e.phone, e);
+    const key = playerKey(e);
+    if (!key || vendorOf(e) !== vendor) continue;
+    const prev = latestName.get(key);
+    if (!prev || e.ts > prev.ts) latestName.set(key, e);
     if (e.ts < since) continue;
-    const cur = best.get(e.phone);
-    if (!cur || compareEntries(e, cur) < 0) best.set(e.phone, e);
+    const cur = best.get(key);
+    if (!cur || compareEntries(e, cur) < 0) best.set(key, e);
   }
-  return [...best.values()].sort(compareEntries)
-    .map((e, i) => ({ ...e, rank: i + 1, name: latestName.get(e.phone).name }));
+  return [...best.entries()].map(([key, e]) => ({ ...e, key }))
+    .sort(compareEntries)
+    .map((e, i) => ({ ...e, rank: i + 1, name: latestName.get(e.key).name }));
 }
 
 // Plausibility checks on a submitted breakdown. Returns an error string or null.

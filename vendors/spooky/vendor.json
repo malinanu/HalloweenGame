@@ -1,20 +1,67 @@
 {
-  "title": ["SPOOKY", "MAZE RUNNER"],
+  "title": [
+    "SPOOKY",
+    "MAZE RUNNER"
+  ],
   "logo": null,
-  "tagline": ["COLLECT.", "SURVIVE.", "WIN."],
-  "colors": { "primary": "#ff8a1f", "secondary": "#7dff3a" },
-  "item": { "one": "treat bag", "many": "treat bags", "shape": "bag" },
-  "label": { "brand": "SPOOKY", "tagline": "TREATS" },
+  "tagline": [
+    "COLLECT.",
+    "SURVIVE.",
+    "WIN."
+  ],
+  "colors": {
+    "primary": "#ff8a1f",
+    "secondary": "#7dff3a"
+  },
+  "item": {
+    "one": "treat bag",
+    "many": "treat bags",
+    "shape": "bag"
+  },
+  "label": {
+    "brand": "SPOOKY",
+    "tagline": "TREATS"
+  },
   "items": [
-    { "name": "Hot & Spicy", "color": "#e3262b", "accent": "#ffd23f", "image": null },
-    { "name": "Cheese",      "color": "#f6c514", "accent": "#c0392b", "image": null },
-    { "name": "Sour Cream",  "color": "#2fb84a", "accent": "#fff36b", "image": null },
-    { "name": "Salted",      "color": "#1f6fe0", "accent": "#ffe066", "image": null },
-    { "name": "BBQ",         "color": "#8e2bd1", "accent": "#ff9a3c", "image": null }
+    {
+      "name": "Hot & Spicy",
+      "color": "#e3262b",
+      "accent": "#ffd23f",
+      "image": null
+    },
+    {
+      "name": "Cheese",
+      "color": "#f6c514",
+      "accent": "#c0392b",
+      "image": null
+    },
+    {
+      "name": "Sour Cream",
+      "color": "#2fb84a",
+      "accent": "#fff36b",
+      "image": null
+    },
+    {
+      "name": "Salted",
+      "color": "#1f6fe0",
+      "accent": "#ffe066",
+      "image": null
+    },
+    {
+      "name": "BBQ",
+      "color": "#8e2bd1",
+      "accent": "#ff9a3c",
+      "image": null
+    }
   ],
   "prizes": {
     "daily": "Daily winners receive treat bundles.",
     "weekly": "Weekly leaders receive bigger gift packs.",
     "final": "Final leaderboard winners receive the main prizes."
+  },
+  "credit": "Property of 3logiq",
+  "leaderboard": {
+    "requirePhone": false,
+    "phoneCountry": "LK"
   }
 }

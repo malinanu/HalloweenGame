@@ -1,4 +1,4 @@
-// Halloween maze game (white-label) — static file server + leaderboard API. Zero dependencies.
+// Spooky Maze Runner (white-label Halloween game) — static file server + leaderboard API. Zero dependencies.
 //   node server.js            (PORT=8080, DATA_DIR=./data, TZ_OFFSET_MIN=330 by default)
 const http = require('http');
 const fs = require('fs');
@@ -16,7 +16,7 @@ const ADMIN_KEY = process.env.ADMIN_KEY || '';
 const VENDOR_ENV = process.env.VENDOR || '';
 
 // Scoring/ranking rules come from the game's own modules (loaded at startup) so client and server never drift.
-let RULES, scoring, DEFAULT_VENDOR, VENDOR_ID;
+let RULES, scoring, DEFAULT_VENDOR, VENDOR_ID, normalizeBoard;
 const MAX_PACKS_PER_SEC = 1.6; // generous upper bound on how fast packs can physically be collected
 
 const MIME = {
@@ -96,19 +96,41 @@ const clientIp = (req) => (req.headers['x-forwarded-for'] || '').split(',')[0].t
 
 // Recompute the score from its breakdown and bounds-check every part (js/scoring.js).
 const BREAKDOWN_KEYS = ['reason', 'packs', 'flavourCounts', 'packPoints', 'comboPoints', 'speedPoints', 'nearMisses', 'sets', 'survivedSec', 'livesLeft', 'score'];
-function validate(body, session) {
+// Leaderboard settings of a vendor (does it require a mobile number, which country format).
+const boardCache = new Map();
+function vendorBoard(id) {
+  const file = path.join(ROOT, 'vendors', id, 'vendor.json');
+  const mtime = fs.statSync(file).mtimeMs;
+  const hit = boardCache.get(id);
+  if (hit && hit.mtime === mtime) return hit.board;
+  let board;
+  try { board = normalizeBoard(JSON.parse(fs.readFileSync(file, 'utf8')).leaderboard); } catch (e) {
+    console.warn(`vendors/${id}/vendor.json: ${e.message}; using default leaderboard settings`);
+    board = normalizeBoard({});
+  }
+  boardCache.set(id, { mtime, board });
+  return board;
+}
+
+function validate(body, session, vendor) {
   const name = String(body.name || '').trim().replace(/\s+/g, ' ');
   if (name.length < 2 || name.length > 16) return 'Name must be 2–16 characters.';
   if (!/^[\p{L}\p{N} _.\-']+$/u.test(name)) return 'Name can only use letters, numbers, spaces and . _ - \'';
-  const phone = scoring.normalizeMobile(body.phone);
-  if (!phone) return 'Please enter a valid Sri Lankan mobile number (07X XXX XXXX).';
+  const board = vendorBoard(vendor);
+  let phone = null;
+  if (board.requirePhone) {
+    phone = scoring.normalizeMobile(body.phone, board.phoneCountry);
+    if (!phone) return board.phoneCountry === 'LK' ? 'Please enter a valid Sri Lankan mobile number (07X XXX XXXX).' : 'Please enter a valid mobile number with country code.';
+  }
+  const device = String(body.device || '');
+  if (!/^[a-z0-9]{8,40}$/i.test(device)) return 'Bad request.';
   const b = Object.fromEntries(BREAKDOWN_KEYS.map((k) => [k, body[k]]));
   const problem = scoring.checkBreakdown(b);
   if (problem) { console.warn(`Rejected score from ${session.ip}: ${problem}`); return 'Invalid score.'; }
   const elapsed = (Date.now() - session.started) / 1000;
   if (elapsed < b.survivedSec - 2) return 'Invalid score.';
   if (b.packs > Math.ceil(Math.min(elapsed, RULES.durationSec + 5) * MAX_PACKS_PER_SEC)) return 'Invalid score.';
-  return { name, phone, ...b };
+  return { name, phone, device, ...b };
 }
 
 // `textCols`: indexes of player-typed columns that get formula-injection protection.
@@ -145,15 +167,15 @@ async function api(req, res, url) {
     try { body = await readBody(req); } catch { return send(res, 400, { error: 'Bad request.' }); }
     const session = sessions.get(String(body.session || ''));
     if (!session) return send(res, 400, { error: 'Your game session expired — play again to submit.' });
-    const v = validate(body, session);
-    if (typeof v === 'string') return send(res, 400, { error: v });
     const vendor = vendorExists(body.vendor) ? body.vendor : defaultVendor();
+    const v = validate(body, session, vendor);
+    if (typeof v === 'string') return send(res, 400, { error: v });
     sessions.delete(String(body.session)); // one submission per game
     const entry = { ...v, vendor, ip: session.ip, ts: Date.now() };
     scores.push(entry);
     save();
     const today = board('daily', vendor);
-    const mine = today.find((e) => e.phone === v.phone);
+    const mine = today.find((e) => e.key === scoring.playerKey(v));
     return send(res, 200, { ok: true, rank: mine.rank, best: mine.score, improved: mine.ts === entry.ts, tag: scoring.mobileTag(v.phone) });
   }
 
@@ -164,7 +186,7 @@ async function api(req, res, url) {
     const period = ['daily', 'weekly', 'all'].includes(url.searchParams.get('period')) ? url.searchParams.get('period') : 'daily';
     const limit = Math.min(500, Math.max(1, Number(url.searchParams.get('limit')) || 5));
     const vendor = vendorParam(url);
-    const top = board(period, vendor).slice(0, limit).map(({ ip, ...e }) => ({ ...e, mobile: `+${e.phone}`, submittedAt: new Date(e.ts).toISOString() }));
+    const top = board(period, vendor).slice(0, limit).map(({ ip, ...e }) => ({ ...e, mobile: e.phone ? `+${e.phone}` : '', submittedAt: new Date(e.ts).toISOString() }));
     if (url.searchParams.get('format') === 'csv') {
       const cols = ['rank', 'name', 'mobile', 'score', 'packs', 'packPoints', 'comboPoints', 'speedPoints', 'nearMisses', 'sets', 'survivedSec', 'livesLeft', 'reason', 'submittedAt'];
       return send(res, 200, toCsv([cols, ...top.map((e) => cols.map((c) => e[c]))], [cols.indexOf('name')]), {
@@ -204,6 +226,7 @@ function serveStatic(req, res, url) {
 (async () => {
   ({ RULES, DEFAULT_VENDOR, VENDOR_ID } = await import('./js/config.js'));
   scoring = await import('./js/scoring.js');
+  ({ normalizeBoard } = await import('./js/vendor.js'));
   http.createServer((req, res) => {
     const url = new URL(req.url, 'http://localhost');
     if (url.pathname.startsWith('/api/')) {
@@ -213,5 +236,5 @@ function serveStatic(req, res, url) {
     } else {
       send(res, 405, { error: 'Method not allowed' });
     }
-  }).listen(PORT, () => console.log(`Maze game running at http://localhost:${PORT} (default vendor: ${defaultVendor()})`));
+  }).listen(PORT, () => console.log(`Game running at http://localhost:${PORT} (default vendor: ${defaultVendor()})`));
 })();

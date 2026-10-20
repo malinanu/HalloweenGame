@@ -50,6 +50,11 @@ function applyVendor(v) {
   const words = { one: v.item.one, many: v.item.many, Many: cap(v.item.many) };
   document.querySelectorAll('[data-v]').forEach((el) => { el.textContent = words[el.dataset.v] ?? ''; });
   ['daily', 'weekly', 'final'].forEach((k) => { $(`#prize-${k}`).textContent = v.prizes[k]; });
+  $('#watermark').textContent = v.credit;
+  $('#watermark').classList.toggle('hidden', !v.credit);
+  $('#phone-field').classList.toggle('hidden', !v.leaderboard.requirePhone);
+  $('#in-phone').required = v.leaderboard.requirePhone;
+  if (v.leaderboard.phoneCountry !== 'LK') $('#in-phone').placeholder = '+44 7700 900123';
 
   flavourBar.innerHTML = v.items.map((p) => `<i data-id="${p.id}" title="${escapeHtml(p.name)}" style="background:${p.color};color:${p.color}"></i>`).join('');
   $('#rules-flavours').innerHTML = v.items.map((p) => `<span style="background:${p.color}">${escapeHtml(p.name)}</span>`).join('');
@@ -224,22 +229,27 @@ $('#submit-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   if (submitted || !lastResult) return;
   const name = $('#in-name').value.trim().replace(/\s+/g, ' ');
-  const phone = $('#in-phone').value.trim();
+  const needPhone = VENDOR.leaderboard.requirePhone;
+  const phone = needPhone ? $('#in-phone').value.trim() : '';
   const msg = $('#submit-msg');
   if (name.length < 2) { msg.textContent = 'Please enter a name (2–16 characters).'; msg.className = 'msg err'; return; }
-  if (!normalizeMobile(phone)) { msg.textContent = 'Please enter a valid mobile number (07X XXX XXXX).'; msg.className = 'msg err'; return; }
+  if (needPhone && !normalizeMobile(phone, VENDOR.leaderboard.phoneCountry)) {
+    msg.textContent = VENDOR.leaderboard.phoneCountry === 'LK' ? 'Please enter a valid mobile number (07X XXX XXXX).' : 'Please enter a valid mobile number with country code.';
+    msg.className = 'msg err';
+    return;
+  }
   $('#btn-submit').disabled = true;
   msg.textContent = 'Submitting…';
   msg.className = 'msg';
   try {
-    try { localStorage.setItem('smr_name', name); localStorage.setItem('smr_phone', phone); } catch { /* ignore */ }
+    try { localStorage.setItem('smr_name', name); if (needPhone) localStorage.setItem('smr_phone', phone); } catch { /* ignore */ }
     const r = await submitScore({ session, name, phone, ...lastResult });
     submitted = true;
     msg.textContent = r.improved
       ? `New best! You're #${r.rank} today.`
       : `Saved. Your best today is still ${r.best.toLocaleString()} (#${r.rank}).`;
     msg.className = 'msg ok';
-    setTimeout(() => openBoard('daily', { name, tag: mobileTag(normalizeMobile(phone)) }), 1200);
+    setTimeout(() => openBoard('daily', { name, tag: mobileTag(normalizeMobile(phone, VENDOR.leaderboard.phoneCountry)) }), 1200);
   } catch (err) {
     msg.textContent = err.message || 'Could not submit score.';
     msg.className = 'msg err';
@@ -260,13 +270,15 @@ async function renderBoard() {
       return `<li class="${me ? 'me' : ''}"><span class="rk">${e.rank === 1 ? '👑 1' : e.rank}</span><span class="nm">${escapeHtml(e.name)} <small class="tag">${escapeHtml(e.tag || '')}</small></span><span class="sc">${e.score.toLocaleString()}</span></li>`;
     }).join('')
     : '<li class="empty">No scores yet — be the first!</li>';
-  $('#lb-note').textContent = source === 'local' ? 'Offline mode: showing scores saved on this device.' : 'One entry per mobile number — only your best score counts. Prizes for daily & weekly leaders!';
+  $('#lb-note').textContent = source === 'local' ? 'Offline mode: showing scores saved on this device.' : (VENDOR.leaderboard.requirePhone ? 'One entry per mobile number — ' : '') + 'Only your best score counts. Prizes for daily & weekly leaders!';
 }
 function savedPlayer() {
   try {
     const name = localStorage.getItem('smr_name');
-    const phone = normalizeMobile(localStorage.getItem('smr_phone'));
-    return name && phone ? { name, tag: mobileTag(phone) } : null;
+    if (!name) return null;
+    if (!VENDOR.leaderboard.requirePhone) return { name, tag: '' };
+    const phone = normalizeMobile(localStorage.getItem('smr_phone'), VENDOR.leaderboard.phoneCountry);
+    return phone ? { name, tag: mobileTag(phone) } : null;
   } catch { return null; }
 }
 function openBoard(period = boardPeriod, me = highlight || savedPlayer()) {
@@ -338,6 +350,8 @@ document.addEventListener('touchend', (e) => {
     $('#screen-loading .muted').textContent = 'Failed to load game assets. Please refresh.';
     return;
   }
+  // item labels are drawn on canvas with the game font: make sure it's loaded first
+  await Promise.race([document.fonts?.load('36px "Luckiest Guy"'), new Promise((r) => setTimeout(r, 1500))]).catch(() => {});
   const input = new Input();
   input.onSteer = () => hooks.haptic(6);
   input.onPause = () => { if (game.state === 'playing' || game.state === 'paused' || game.state === 'countdown') togglePause(); };
