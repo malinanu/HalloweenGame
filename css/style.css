@@ -205,3 +205,7 @@ body.touch .tut-keys { display: none; }
 .packs-art i.shape-box { border-radius: 3px; }
 .packs-art i.shape-coin { width: 40px; height: 40px; border-radius: 50%; }
 .packs-art i.shape-gift { width: 40px; height: 40px; border-radius: 4px; }
+
+/* platforms without prize campaigns (YouTube, game portals) */
+body.no-prizes .prizes-only { display: none !important; }
+body:not(.no-prizes) .no-prizes { display: none !important; }

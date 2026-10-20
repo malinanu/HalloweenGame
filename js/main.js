@@ -4,6 +4,7 @@ import { Input } from './input.js';
 import { Game } from './game.js';
 import { SCORING, RULES } from './config.js';
 import { VENDOR, loadVendor } from './vendor.js';
+import { platform } from './platform.js';
 import { normalizeMobile, mobileTag } from './scoring.js';
 import { startSession, fetchBoard, submitScore, personalBest, savePersonalBest } from './leaderboard.js';
 
@@ -102,6 +103,7 @@ const hooks = {
     $('#popups').appendChild(el);
     setTimeout(() => el.remove(), 900);
   },
+  firstFrame() { platform.firstFrame(); },
   insets() {
     const hudVisible = !$('#top').classList.contains('hidden');
     const top = hudVisible ? $('#top').getBoundingClientRect().bottom + 4 : 12;
@@ -142,7 +144,7 @@ $('#tut-sec-pts').textContent = `+${SCORING.perSecondSurvived}`;
 $('#tut-life-pts').textContent = `+${SCORING.perLifeLeft} points`;
 $('#tut-dots').innerHTML = tutCards.map(() => '<i></i>').join('');
 
-function tutorialSeen() { try { return localStorage.getItem(TUT_KEY) === '1'; } catch { return false; } }
+function tutorialSeen() { return platform.store.get(TUT_KEY) === '1'; }
 function showTutCard(i) {
   tutIndex = i;
   tutCards.forEach((c, k) => c.classList.toggle('on', k === i));
@@ -155,7 +157,7 @@ function openTutorial(then) {
   show('screen-tutorial');
 }
 function closeTutorial() {
-  try { localStorage.setItem(TUT_KEY, '1'); } catch { /* ignore */ }
+  platform.store.set(TUT_KEY, '1');
   const then = tutThen;
   tutThen = null;
   if (then) then(); else show('screen-start');
@@ -184,18 +186,28 @@ function startGame() {
 }
 
 async function play() {
-  enterMobileMode();
+  if (platform.caps.fullscreen) enterMobileMode();
   audio.ensure();
   audio.startMusic();
   $('#hud').classList.remove('hidden');
   $('#flavours').classList.remove('hidden');
   show(null);
   game.start();
+  platform.roundStart();
   session = await startSession();
+}
+
+// "Play again": ad-supported portals show an ad between rounds (music paused meanwhile).
+async function playAgain() {
+  audio.suspend();
+  await platform.adBreak();
+  audio.resume();
+  play();
 }
 
 function gameOver(result) {
   releaseWakeLock();
+  platform.roundEnd(result.score);
   lastResult = result;
   submitted = false;
   const best = personalBest();
@@ -219,8 +231,8 @@ function gameOver(result) {
   $('#btn-submit').disabled = false;
   $('#submit-form').classList.toggle('hidden', result.score <= 0);
   try {
-    $('#in-name').value = localStorage.getItem('smr_name') || '';
-    $('#in-phone').value = localStorage.getItem('smr_phone') || '';
+    $('#in-name').value = platform.store.get('smr_name') || '';
+    $('#in-phone').value = platform.store.get('smr_phone') || '';
   } catch { /* ignore */ }
   show('screen-over');
 }
@@ -242,7 +254,8 @@ $('#submit-form').addEventListener('submit', async (e) => {
   msg.textContent = 'Submitting…';
   msg.className = 'msg';
   try {
-    try { localStorage.setItem('smr_name', name); if (needPhone) localStorage.setItem('smr_phone', phone); } catch { /* ignore */ }
+    platform.store.set('smr_name', name);
+    if (needPhone) platform.store.set('smr_phone', phone);
     const r = await submitScore({ session, name, phone, ...lastResult });
     submitted = true;
     msg.textContent = r.improved
@@ -274,10 +287,10 @@ async function renderBoard() {
 }
 function savedPlayer() {
   try {
-    const name = localStorage.getItem('smr_name');
+    const name = platform.store.get('smr_name');
     if (!name) return null;
     if (!VENDOR.leaderboard.requirePhone) return { name, tag: '' };
-    const phone = normalizeMobile(localStorage.getItem('smr_phone'), VENDOR.leaderboard.phoneCountry);
+    const phone = normalizeMobile(platform.store.get('smr_phone'), VENDOR.leaderboard.phoneCountry);
     return phone ? { name, tag: mobileTag(phone) } : null;
   } catch { return null; }
 }
@@ -303,7 +316,7 @@ function togglePause() {
 }
 $('#btn-play').addEventListener('click', startGame);
 $('#btn-howto').addEventListener('click', () => openTutorial(null));
-$('#btn-again').addEventListener('click', play);
+$('#btn-again').addEventListener('click', playAgain);
 $('#btn-rules').addEventListener('click', () => show('screen-rules'));
 $('#btn-board').addEventListener('click', () => openBoard('daily'));
 $('#btn-over-board').addEventListener('click', () => openBoard('daily'));
@@ -315,6 +328,13 @@ const soundBtn = $('#btn-sound');
 const syncSound = () => { soundBtn.textContent = audio.muted ? '🔇' : '🔊'; };
 syncSound();
 soundBtn.addEventListener('click', () => { audio.ensure(); audio.setMuted(!audio.muted); syncSound(); });
+// The platform can pause the game (e.g. YouTube when the player scrolls away) and owns the sound setting.
+platform.onPause(() => {
+  audio.suspend();
+  if (game?.pause()) show('screen-pause');
+});
+platform.onResume(() => audio.resume());
+platform.onAudio((on) => audio.setBlocked(!on));
 document.addEventListener('visibilitychange', async () => {
   if (document.hidden && game?.pause()) show('screen-pause');
   // the wake lock is dropped when the tab is hidden; take it back when we return mid-round
@@ -336,6 +356,11 @@ document.addEventListener('touchend', (e) => {
 // ---------------------------------------------------------------- boot
 (async function boot() {
   try {
+    await platform.init();
+    audio.load();
+    audio.setBlocked(!platform.audioEnabled); // YouTube: respect the player's YouTube sound setting
+    syncSound();
+    document.body.classList.toggle('no-prizes', !platform.caps.prizes);
     applyVendor(await loadVendor());
   } catch (err) {
     console.error(err);
@@ -358,5 +383,6 @@ document.addEventListener('touchend', (e) => {
   game = new Game($('#game'), assets, audio, input, hooks);
   game.attract();
   show('screen-start');
+  platform.ready(); // interactive now (YouTube: gameReady, sent after the first frame)
   window.__game = game; // handy for debugging in the console
 })();

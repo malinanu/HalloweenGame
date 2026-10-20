@@ -23,11 +23,16 @@ Copy `vendors/spooky` to `vendors/<your-id>`, edit `vendor.json` (name, logo, co
 five collectibles and their shape, prizes), then open `/?vendor=<your-id>` or start the server
 with `VENDOR=<your-id>`. Included skins: `spooky`, `example-drinks`, `example-rewards`.
 
-## Build the downloadable package (source repository only)
+## Builds for YouTube Playables and game portals
 
 ```bash
-npm run package       # -> dist/spooky-maze-runner-v1.0.0.zip
+node tools/package.js --target youtube                       # YouTube Playables upload
+node tools/package.js --target crazygames                    # CrazyGames upload
+node tools/package.js --target gamedistribution --gd-id ID   # GameDistribution upload
+node tools/package.js                                        # full web package
 ```
+
+Each writes a zip to `dist/`. See the documentation for what each build changes.
 
 ## Credits
 

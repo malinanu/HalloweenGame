@@ -1,0 +1,48 @@
+SPOOKY MAZE RUNNER — LICENCE
+Copyright (c) 3logiq. All rights reserved except as granted below.
+
+This licence applies to the game source code, artwork and documentation written by 3logiq
+("the Item"). Third-party components keep their own licences (see the end of this file).
+
+------------------------------------------------------------------------------------------
+STANDARD LICENCE
+------------------------------------------------------------------------------------------
+You may:
+  - use the Item to make ONE end product (one game, one branded campaign or one website),
+    for yourself or for ONE client;
+  - modify it, re-skin it and change the code as you like;
+  - publish that end product on the web, on game portals or on YouTube Playables;
+  - earn money from that end product (ads, sponsorship, a paid campaign for your client).
+
+You may not:
+  - resell, share or give away the Item's source code or files, modified or not,
+    as a stand-alone product or as part of another template/kit;
+  - make more than one end product without buying another licence.
+
+------------------------------------------------------------------------------------------
+EXTENDED LICENCE
+------------------------------------------------------------------------------------------
+Everything in the Standard Licence, plus:
+  - unlimited end products for you and your clients (e.g. a re-skinned campaign for every
+    brand you work with);
+  - offering the game as a hosted service (e.g. selling branded promo games to companies).
+
+You still may not resell or redistribute the source code itself.
+
+------------------------------------------------------------------------------------------
+GENERAL
+------------------------------------------------------------------------------------------
+The Item is provided "as is", without warranty of any kind. 3logiq is not liable for any
+damages arising from its use. Running prize campaigns, collecting phone numbers and other
+personal data is your responsibility: follow the law and platform rules where you publish.
+
+------------------------------------------------------------------------------------------
+THIRD-PARTY COMPONENTS (all allow commercial use and redistribution)
+------------------------------------------------------------------------------------------
+three.js r170 ................. MIT licence — vendor/three/LICENSE
+KayKit Dungeon Pack 1.1 ....... CC0 — Kay Lousberg (kaylousberg.com) — assets/licenses/
+KayKit Skeletons 1.1 .......... CC0 — Kay Lousberg — assets/licenses/
+Brackeys VFX bundle ........... CC0 — particles by Picster & Kenney, sprite sheets by CodeManu
+Creepster, Nunito fonts ....... SIL Open Font License 1.1 — assets/licenses/fonts/
+Luckiest Guy font ............. Apache License 2.0 — assets/licenses/fonts/
+Sound effects and music are synthesized in code (no audio files).

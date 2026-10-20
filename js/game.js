@@ -251,6 +251,7 @@ export class Game {
 
     this.updateCamera(dt);
     this.renderer.render(this.scene, this.camera);
+    if (!this.firstFrameDone) { this.firstFrameDone = true; this.hooks.firstFrame?.(); }
   }
 
   // Drop to a lighter render path on slow devices (keeps the game playable on old phones).
