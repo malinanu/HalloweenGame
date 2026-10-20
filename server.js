@@ -1,4 +1,4 @@
-// Spooky Maze Runner — static file server + leaderboard API. Zero dependencies.
+// Halloween maze game (white-label) — static file server + leaderboard API. Zero dependencies.
 //   node server.js            (PORT=8080, DATA_DIR=./data, TZ_OFFSET_MIN=330 by default)
 const http = require('http');
 const fs = require('fs');
@@ -12,9 +12,11 @@ const SCORES_FILE = path.join(DATA_DIR, 'scores.json');
 // Day/week boundaries for the daily & weekly prizes. 330 = Sri Lanka (UTC+05:30).
 const TZ_OFFSET_MIN = Number(process.env.TZ_OFFSET_MIN ?? 330);
 const ADMIN_KEY = process.env.ADMIN_KEY || '';
+// Which vendor skin (vendors/<id>/vendor.json) the game shows by default; ?vendor= overrides it for demos.
+const VENDOR_ENV = process.env.VENDOR || '';
 
 // Scoring/ranking rules come from the game's own modules (loaded at startup) so client and server never drift.
-let RULES, scoring;
+let RULES, scoring, DEFAULT_VENDOR, VENDOR_ID;
 const MAX_PACKS_PER_SEC = 1.6; // generous upper bound on how fast packs can physically be collected
 
 const MIME = {
@@ -54,9 +56,24 @@ function periodStart(period, now = Date.now()) {
 }
 
 // One entry per mobile number (their best), strictly ranked — see js/scoring.js.
-function board(period) {
-  return scoring.rankBoard(scores, periodStart(period));
+function board(period, vendor) {
+  return scoring.rankBoard(scores, periodStart(period), vendor);
 }
+
+// A vendor id is valid when it is well-formed and has a vendors/<id>/vendor.json.
+function vendorExists(id) {
+  return typeof id === 'string' && VENDOR_ID.test(id) && fs.existsSync(path.join(ROOT, 'vendors', id, 'vendor.json'));
+}
+let warnedVendor = false;
+function defaultVendor() {
+  if (vendorExists(VENDOR_ENV)) return VENDOR_ENV;
+  if (VENDOR_ENV && !warnedVendor) {
+    warnedVendor = true;
+    console.warn(`VENDOR="${VENDOR_ENV}" has no vendors/${VENDOR_ENV}/vendor.json; using ${DEFAULT_VENDOR}`);
+  }
+  return DEFAULT_VENDOR;
+}
+const vendorParam = (url) => (vendorExists(url.searchParams.get('vendor')) ? url.searchParams.get('vendor') : defaultVendor());
 
 const publicEntry = (e) => ({ rank: e.rank, name: e.name, tag: scoring.mobileTag(e.phone), score: e.score, packs: e.packs });
 
@@ -112,10 +129,15 @@ async function api(req, res, url) {
     return send(res, 200, { session: id });
   }
 
+  if (req.method === 'GET' && url.pathname === '/api/vendor') {
+    return send(res, 200, { id: defaultVendor() });
+  }
+
   if (req.method === 'GET' && url.pathname === '/api/leaderboard') {
     const period = ['daily', 'weekly', 'all'].includes(url.searchParams.get('period')) ? url.searchParams.get('period') : 'daily';
     const limit = Math.min(50, Math.max(1, Number(url.searchParams.get('limit')) || 10));
-    return send(res, 200, { period, entries: board(period).slice(0, limit).map(publicEntry) });
+    const vendor = vendorParam(url);
+    return send(res, 200, { vendor, period, entries: board(period, vendor).slice(0, limit).map(publicEntry) });
   }
 
   if (req.method === 'POST' && url.pathname === '/api/scores') {
@@ -125,30 +147,32 @@ async function api(req, res, url) {
     if (!session) return send(res, 400, { error: 'Your game session expired — play again to submit.' });
     const v = validate(body, session);
     if (typeof v === 'string') return send(res, 400, { error: v });
+    const vendor = vendorExists(body.vendor) ? body.vendor : defaultVendor();
     sessions.delete(String(body.session)); // one submission per game
-    const entry = { ...v, ip: session.ip, ts: Date.now() };
+    const entry = { ...v, vendor, ip: session.ip, ts: Date.now() };
     scores.push(entry);
     save();
-    const today = board('daily');
+    const today = board('daily', vendor);
     const mine = today.find((e) => e.phone === v.phone);
     return send(res, 200, { ok: true, rank: mine.rank, best: mine.score, improved: mine.ts === entry.ts, tag: scoring.mobileTag(v.phone) });
   }
 
   // Organiser export of winners incl. contact numbers:
-  //   GET /api/admin/winners?period=daily|weekly|all&limit=5&format=json|csv&key=ADMIN_KEY
+  //   GET /api/admin/winners?vendor=<id>&period=daily|weekly|all&limit=5&format=json|csv&key=ADMIN_KEY
   if (req.method === 'GET' && url.pathname === '/api/admin/winners') {
     if (!ADMIN_KEY || url.searchParams.get('key') !== ADMIN_KEY) return send(res, 403, { error: 'Forbidden' });
     const period = ['daily', 'weekly', 'all'].includes(url.searchParams.get('period')) ? url.searchParams.get('period') : 'daily';
     const limit = Math.min(500, Math.max(1, Number(url.searchParams.get('limit')) || 5));
-    const top = board(period).slice(0, limit).map(({ ip, ...e }) => ({ ...e, mobile: `+${e.phone}`, submittedAt: new Date(e.ts).toISOString() }));
+    const vendor = vendorParam(url);
+    const top = board(period, vendor).slice(0, limit).map(({ ip, ...e }) => ({ ...e, mobile: `+${e.phone}`, submittedAt: new Date(e.ts).toISOString() }));
     if (url.searchParams.get('format') === 'csv') {
       const cols = ['rank', 'name', 'mobile', 'score', 'packs', 'packPoints', 'comboPoints', 'speedPoints', 'nearMisses', 'sets', 'survivedSec', 'livesLeft', 'reason', 'submittedAt'];
       return send(res, 200, toCsv([cols, ...top.map((e) => cols.map((c) => e[c]))], [cols.indexOf('name')]), {
         'Content-Type': 'text/csv; charset=utf-8',
-        'Content-Disposition': `attachment; filename="spooky-maze-${period}-top${limit}.csv"`,
+        'Content-Disposition': `attachment; filename="${vendor}-${period}-top${limit}.csv"`,
       });
     }
-    return send(res, 200, { period, since: new Date(periodStart(period)).toISOString(), entries: top });
+    return send(res, 200, { vendor, period, since: new Date(periodStart(period)).toISOString(), entries: top });
   }
 
   return send(res, 404, { error: 'Not found' });
@@ -178,7 +202,7 @@ function serveStatic(req, res, url) {
 }
 
 (async () => {
-  ({ RULES } = await import('./js/config.js'));
+  ({ RULES, DEFAULT_VENDOR, VENDOR_ID } = await import('./js/config.js'));
   scoring = await import('./js/scoring.js');
   http.createServer((req, res) => {
     const url = new URL(req.url, 'http://localhost');
@@ -189,5 +213,5 @@ function serveStatic(req, res, url) {
     } else {
       send(res, 405, { error: 'Method not allowed' });
     }
-  }).listen(PORT, () => console.log(`Spooky Maze Runner running at http://localhost:${PORT}`));
+  }).listen(PORT, () => console.log(`Maze game running at http://localhost:${PORT} (default vendor: ${defaultVendor()})`));
 })();

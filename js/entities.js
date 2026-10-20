@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { DIRS } from './maze.js';
-import { packLabelTexture } from './textures.js';
 
 // Moves along the maze grid, cell centre to cell centre (Pac-Man style).
 export class GridMover {
@@ -238,7 +237,7 @@ export class Monster {
   }
 }
 
-// ---------------------------------------------------------------- savoury packs
+// ---------------------------------------------------------------- collectibles
 const packGeoCache = { geo: null };
 function packGeometry() {
   if (packGeoCache.geo) return packGeoCache.geo;
@@ -256,19 +255,72 @@ function packGeometry() {
   return geo;
 }
 
+// Builds the mesh for one collectible in the vendor's shape (bag, can, box, coin, gift).
+function buildItemMesh(shape, item, tex) {
+  const face = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.35, metalness: 0.25, emissive: '#ffffff', emissiveMap: tex, emissiveIntensity: 0.25 });
+  const plain = new THREE.MeshStandardMaterial({ color: item.color, roughness: 0.35, metalness: 0.3 });
+  let mesh;
+  if (shape === 'can') {
+    const metal = new THREE.MeshStandardMaterial({ color: '#d7dde5', roughness: 0.25, metalness: 0.9 });
+    mesh = new THREE.Mesh(shapeGeo.can(), [face, metal, metal]);
+    mesh.scale.setScalar(1.2);
+  } else if (shape === 'coin') {
+    const rim = new THREE.MeshStandardMaterial({ color: item.color, roughness: 0.25, metalness: 0.85, emissive: item.color, emissiveIntensity: 0.15 });
+    // the second cap sees the texture rotated, so give it a turned copy
+    const backTex = tex.clone();
+    backTex.wrapS = backTex.wrapT = THREE.RepeatWrapping;
+    backTex.repeat.set(-1, -1);
+    backTex.needsUpdate = true;
+    const back = face.clone();
+    back.map = backTex;
+    back.emissiveMap = backTex;
+    mesh = new THREE.Mesh(shapeGeo.coin(), [rim, face, back]);
+    mesh.scale.setScalar(1.25);
+  } else if (shape === 'gift') {
+    mesh = new THREE.Group();
+    const wrap = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.5, emissive: '#ffffff', emissiveMap: tex, emissiveIntensity: 0.15 });
+    const ribbon = new THREE.MeshStandardMaterial({ color: item.accent, roughness: 0.3, metalness: 0.4 });
+    mesh.add(new THREE.Mesh(shapeGeo.giftBox(), wrap));
+    for (const g of [shapeGeo.ribbonA(), shapeGeo.ribbonB()]) mesh.add(new THREE.Mesh(g, ribbon));
+    for (const side of [-1, 1]) {
+      const loop = new THREE.Mesh(shapeGeo.bow(), ribbon);
+      loop.position.set(side * 0.16, 0.6, 0);
+      loop.rotation.set(0, Math.PI / 2, side * 0.6);
+      mesh.add(loop);
+    }
+    mesh.scale.setScalar(1.05);
+  } else if (shape === 'box') {
+    mesh = new THREE.Mesh(shapeGeo.box(), [plain, plain, plain, plain, face, face]);
+    mesh.scale.setScalar(1.2);
+  } else {
+    mesh = new THREE.Mesh(packGeometry(), [plain, plain, plain, plain, face, face]);
+    mesh.scale.setScalar(1.25);
+  }
+  mesh.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+  return mesh;
+}
+
+const geoCache = {};
+const cached = (k, make) => () => geoCache[k] || (geoCache[k] = make());
+const shapeGeo = {
+  can: cached('can', () => new THREE.CylinderGeometry(0.42, 0.42, 1.15, 32)),
+  coin: cached('coin', () => new THREE.CylinderGeometry(0.62, 0.62, 0.16, 40).rotateX(Math.PI / 2).rotateZ(Math.PI / 2)),
+  giftBox: cached('gift', () => new THREE.BoxGeometry(1, 1, 1)),
+  box: cached('box', () => new THREE.BoxGeometry(1, 1.3, 0.5)),
+  ribbonA: cached('ribbonA', () => new THREE.BoxGeometry(1.04, 1.04, 0.18)),
+  ribbonB: cached('ribbonB', () => new THREE.BoxGeometry(0.18, 1.04, 1.04)),
+  bow: cached('bow', () => new THREE.TorusGeometry(0.17, 0.06, 8, 16)),
+};
+
 export class Pack {
-  constructor(world, product, x, y, labelTexture) {
+  constructor(world, product, x, y, labelTexture, shape = 'bag') {
     this.world = world;
     this.product = product;
+    this.shape = shape;
     this.x = x; this.y = y;
-    const side = new THREE.MeshStandardMaterial({ color: product.color, roughness: 0.35, metalness: 0.3 });
-    const face = new THREE.MeshStandardMaterial({ map: labelTexture, roughness: 0.35, metalness: 0.25, emissive: '#ffffff', emissiveMap: labelTexture, emissiveIntensity: 0.25 });
     this.group = new THREE.Group();
-    const bag = new THREE.Mesh(packGeometry(), [side, side, side, side, face, face]);
-    bag.castShadow = true;
-    bag.scale.setScalar(1.25);
-    this.bag = bag;
-    this.group.add(bag);
+    this.bag = buildItemMesh(shape, product, labelTexture);
+    this.group.add(this.bag);
     const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: world.assets.textures.light_01_a, color: product.color, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false }));
     glow.scale.setScalar(3.4);
     glow.position.y = -0.2;
@@ -284,7 +336,8 @@ export class Pack {
     this.spawnT = Math.min(1, this.spawnT + dt * 3);
     const s = easeOutBack(this.spawnT);
     this.group.scale.setScalar(Math.max(0.001, s));
-    this.bag.rotation.y = Math.sin(t * 1.6 + this.phase) * 0.6;
+    // coins spin like coins; everything else sways to show its label
+    this.bag.rotation.y = this.shape === 'coin' ? t * 2.4 + this.phase : Math.sin(t * 1.6 + this.phase) * 0.6;
     this.group.position.y = 1.4 + Math.sin(t * 3 + this.phase) * 0.18;
   }
 
@@ -308,4 +361,3 @@ function easeOutBack(x) {
   return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2);
 }
 
-export { packLabelTexture };

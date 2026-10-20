@@ -2,7 +2,8 @@ import { Assets } from './assets.js';
 import { Audio } from './audio.js';
 import { Input } from './input.js';
 import { Game } from './game.js';
-import { PRODUCTS, SCORING, RULES } from './config.js';
+import { SCORING, RULES } from './config.js';
+import { VENDOR, loadVendor } from './vendor.js';
 import { normalizeMobile, mobileTag } from './scoring.js';
 import { startSession, fetchBoard, submitScore, personalBest, savePersonalBest } from './leaderboard.js';
 
@@ -28,19 +29,41 @@ function show(id) {
 // ---------------------------------------------------------------- HUD hooks
 const hearts = $('#hud-lives');
 const flavourBar = $('#flavours');
-flavourBar.innerHTML = PRODUCTS.map((p) => `<i data-id="${p.id}" title="${p.name}" style="background:${p.color};color:${p.color}"></i>`).join('');
-$('#rules-flavours').innerHTML = PRODUCTS.map((p) => `<span style="background:${p.color}">${p.name}</span>`).join('');
 if (touch) $('.controls').textContent = 'Swipe anywhere to steer · tap ❚❚ to pause';
-const maxMult = `×${SCORING.comboMax}`;
-$('#rules-scoring').innerHTML = [
-  ['Each pack collected', `${SCORING.perPack} pts`],
-  [`Combo: packs grabbed within ${SCORING.comboWindowSec}s of each other`, `up to ${maxMult}`],
-  ['Speed: grab a pack soon after it appears', `+${SCORING.speedBonusMax} → 0`],
-  ['Near miss: escape a skeleton up close', `+${SCORING.nearMiss}`],
-  ['Every complete set of all five flavours', `+${SCORING.flavourSet}`],
-  ['Every second survived', `+${SCORING.perSecondSurvived}`],
-  ['Each life left when time runs out', `+${SCORING.perLifeLeft}`],
-].map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('');
+const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
+
+// Everything the vendor file controls: name, logo, colours, collectibles, prizes.
+function applyVendor(v) {
+  const root = document.documentElement.style;
+  root.setProperty('--primary', v.colors.primary);
+  root.setProperty('--secondary', v.colors.secondary);
+  document.title = v.name;
+  document.querySelector('meta[name=theme-color]')?.setAttribute('content', '#1a0f2e');
+  const [first, rest] = v.title;
+  document.querySelectorAll('.v-title').forEach((el) => {
+    el.innerHTML = `<span class="o">${escapeHtml(first)}</span>${rest ? `${el.hasAttribute('data-break') ? '<br>' : ' '}<span class="g">${escapeHtml(rest)}</span>` : ''}`;
+  });
+  document.querySelectorAll('.v-logo').forEach((el) => {
+    el.innerHTML = v.logo ? `<img class="vendor-logo" src="${encodeURI(v.logo)}" alt="">` : '';
+  });
+  $('.v-tagline').innerHTML = v.tagline.map((w, i) => `<span class="${['o', 'g', 'r'][i % 3]}">${escapeHtml(w)}</span>`).join(' ');
+  const words = { one: v.item.one, many: v.item.many, Many: cap(v.item.many) };
+  document.querySelectorAll('[data-v]').forEach((el) => { el.textContent = words[el.dataset.v] ?? ''; });
+  ['daily', 'weekly', 'final'].forEach((k) => { $(`#prize-${k}`).textContent = v.prizes[k]; });
+
+  flavourBar.innerHTML = v.items.map((p) => `<i data-id="${p.id}" title="${escapeHtml(p.name)}" style="background:${p.color};color:${p.color}"></i>`).join('');
+  $('#rules-flavours').innerHTML = v.items.map((p) => `<span style="background:${p.color}">${escapeHtml(p.name)}</span>`).join('');
+  $('#tut-packs').innerHTML = v.items.map((p) => `<i class="shape-${v.item.shape}" style="background:${p.color};color:${p.color}"></i>`).join('');
+  $('#rules-scoring').innerHTML = [
+    [`Each ${v.item.one} collected`, `${SCORING.perPack} pts`],
+    [`Combo: ${v.item.many} grabbed within ${SCORING.comboWindowSec}s of each other`, `up to ×${SCORING.comboMax}`],
+    [`Speed: grab a ${v.item.one} soon after it appears`, `+${SCORING.speedBonusMax} → 0`],
+    ['Near miss: escape a skeleton up close', `+${SCORING.nearMiss}`],
+    ['Every full set (one of each of the five kinds)', `+${SCORING.fullSet}`],
+    ['Every second survived', `+${SCORING.perSecondSurvived}`],
+    ['Each life left when time runs out', `+${SCORING.perLifeLeft}`],
+  ].map(([k, val]) => `<div><span>${escapeHtml(k)}</span><b>${val}</b></div>`).join('');
+}
 
 const hooks = {
   hud({ score, time, lives, flavours }) {
@@ -107,9 +130,8 @@ const TUT_KEY = 'smr_tutorial_seen';
 const tutCards = [...document.querySelectorAll('.tut-card')];
 let tutIndex = 0;
 let tutThen = null; // what to do when the tutorial closes
-$('#tut-packs').innerHTML = PRODUCTS.map((p) => `<i style="background:${p.color};color:${p.color}"></i>`).join('');
 $('#tut-pack-pts').textContent = `${SCORING.perPack} points`;
-$('#tut-five-pts').textContent = `+${SCORING.flavourSet}`;
+$('#tut-five-pts').textContent = `+${SCORING.fullSet}`;
 $('#tut-near-pts').textContent = `+${SCORING.nearMiss}`;
 $('#tut-sec-pts').textContent = `+${SCORING.perSecondSurvived}`;
 $('#tut-life-pts').textContent = `+${SCORING.perLifeLeft} points`;
@@ -178,11 +200,11 @@ function gameOver(result) {
   $('#over-best').textContent = result.score > best ? '★ New personal best!' : `Personal best: ${best.toLocaleString()}`;
   const lifeBonus = result.reason === 'time' ? result.livesLeft * SCORING.perLifeLeft : 0;
   $('#over-breakdown').innerHTML = [
-    [`Packs (${result.packs} × ${SCORING.perPack})`, result.packs * SCORING.perPack],
+    [`${cap(VENDOR.item.many)} (${result.packs} × ${SCORING.perPack})`, result.packs * SCORING.perPack],
     ['Combo bonus', result.comboPoints],
     ['Speed bonus', result.speedPoints],
     [`Near misses (${result.nearMisses} × ${SCORING.nearMiss})`, result.nearMisses * SCORING.nearMiss],
-    [`Flavour sets (${result.sets} × ${SCORING.flavourSet})`, result.sets * SCORING.flavourSet],
+    [`Full sets (${result.sets} × ${SCORING.fullSet})`, result.sets * SCORING.fullSet],
     [`Survived ${result.survivedSec}s (× ${SCORING.perSecondSurvived})`, result.survivedSec * SCORING.perSecondSurvived],
     [`Lives left (${result.livesLeft} × ${SCORING.perLifeLeft})`, lifeBonus],
   ].map(([k, v]) => `<div><span>${k}</span><b>${v ? '+' + v : '0'}</b></div>`).join('')
@@ -301,6 +323,13 @@ document.addEventListener('touchend', (e) => {
 
 // ---------------------------------------------------------------- boot
 (async function boot() {
+  try {
+    applyVendor(await loadVendor());
+  } catch (err) {
+    console.error(err);
+    $('#screen-loading .muted').textContent = 'Failed to load the game. Please refresh.';
+    return;
+  }
   const assets = new Assets();
   try {
     await assets.load((p) => { $('#load-bar').style.width = `${Math.round(p * 100)}%`; });

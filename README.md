@@ -1,16 +1,29 @@
-# 🎃 Spooky Maze Runner
+# 🎃 Halloween Maze — white-label promo game
 
-A Halloween maze-runner web game. Players enter a haunted dungeon maze, collect treat bags,
-dodge five skeleton monsters and submit their score to a daily / weekly / all-time
-leaderboard to compete for prizes. Brand-neutral: the name and the label printed on the bags
-are set in `BRAND` in [`js/config.js`](js/config.js).
+A Halloween maze-runner web game built to be **re-skinned for any vendor**. Players enter a
+haunted dungeon maze, collect the vendor's items, dodge five skeleton monsters and submit their
+score to a daily / weekly / all-time leaderboard to compete for prizes.
+
+The game name, logo, colours, what players collect (and its 3D shape), and the prize text all
+come from one file per vendor: `vendors/<id>/vendor.json`. Three example skins are included:
+
+| Vendor id | Game name | Players collect | Shape |
+| --- | --- | --- | --- |
+| `spooky` (default) | Spooky Maze Runner | treat bags | bag |
+| `example-drinks` | Fizz Fright Night | cans | can |
+| `example-rewards` | Reward Rush | reward coins | coin |
+
+**What a vendor gets:** a branded Halloween game that works on phones and desktops, swipe
+controls and a built-in tutorial, skill-based scoring (combos, near misses, full sets),
+daily/weekly/all-time leaderboards with one entry per mobile number, and a one-click winners
+CSV for the prize team.
 
 Runs in any modern browser on phones, tablets and desktops (Three.js / WebGL, no build step).
 
 ## How to play
 
 1. Enter the maze (through the green portal).
-2. Collect as many treat bags as possible.
+2. Collect as many of the vendor's items as possible.
 3. Avoid the five characters (Warrior, Rogue, Mage, Minion and the Ghost).
 4. Survive until time runs out.
 5. Submit your score to the leaderboard.
@@ -45,7 +58,7 @@ The brief's base points plus skill points, so scores spread out and players rare
 | Combo — packs grabbed within 2.5 s of each other | ×1.25 → ×1.5 → ×1.75 → ×2 (max) |
 | Speed — a pack grabbed soon after it appears | +5, dropping by 1 every 2 s it lies there |
 | Near miss — a skeleton gets close and you escape without being touched (once per skeleton per 3 s) | +5 |
-| Every complete set of all five flavours (repeatable) | +50 |
+| Every full set — one of each of the five kinds (repeatable) | +50 |
 | Every second survived | +2 |
 | Each life left when time runs out | +20 |
 
@@ -75,6 +88,7 @@ Environment variables:
 | `DATA_DIR` | `./data` | Where `scores.json` is stored |
 | `TZ_OFFSET_MIN` | `330` | Time zone for daily/weekly resets (330 = Sri Lanka, UTC+05:30). Weeks start Monday. |
 | `ADMIN_KEY` | *(unset)* | Enables the winners export (see below) |
+| `VENDOR` | `spooky` | Which vendor skin this deployment shows (`vendors/<id>/vendor.json`) |
 
 Append `?low` to the URL to force the low-graphics mode (the game also switches to it
 automatically on slow devices).
@@ -125,23 +139,25 @@ holding the leaderboard.
 | Method | Path | Description |
 | --- | --- | --- |
 | `POST` | `/api/session` | Starts a game session (called when a round starts) |
-| `GET` | `/api/leaderboard?period=daily\|weekly\|all&limit=10` | Ranked best entry per mobile number: `{ rank, name, tag, score, packs }` (no phone numbers) |
-| `POST` | `/api/scores` | `{ session, name, phone, reason, packs, flavourCounts, packPoints, comboPoints, speedPoints, nearMisses, sets, survivedSec, livesLeft, score }` → `{ rank, best, improved }` |
+| `GET` | `/api/vendor` | The deployment's default vendor id |
+| `GET` | `/api/leaderboard?vendor=<id>&period=daily\|weekly\|all&limit=10` | Ranked best entry per mobile number: `{ rank, name, tag, score, packs }` (no phone numbers) |
+| `POST` | `/api/scores` | `{ session, vendor, name, phone, reason, packs, flavourCounts (i1…i5), packPoints, comboPoints, speedPoints, nearMisses, sets, survivedSec, livesLeft, score }` → `{ rank, best, improved }` |
 
 ### Picking winners
 
 ```
-GET /api/admin/winners?period=daily&limit=5&format=csv&key=YOUR_ADMIN_KEY
+GET /api/admin/winners?vendor=spooky&period=daily&limit=5&format=csv&key=YOUR_ADMIN_KEY
 ```
 
-Downloads the ranked top N (`period` = `daily`, `weekly` or `all`; `format` = `csv` or `json`)
+Each vendor has its own leaderboard, so one server can host several demos without mixing
+scores. `vendor` defaults to the deployment's `VENDOR`. Downloads the ranked top N (`period` = `daily`, `weekly` or `all`; `format` = `csv` or `json`)
 with each winner's **full mobile number**, name, score and full breakdown — ready for the prize
 team. Days and weeks follow `TZ_OFFSET_MIN` (Sri Lanka time by default), weeks start Monday.
 
 ### Anti-cheat
 
 Each session can submit once. The server recomputes the total from the breakdown and
-bounds-checks every part (packs = sum of flavours, sets = complete flavour sets, combo/speed
+bounds-checks every part (packs = sum of the five kinds, sets = complete sets, combo/speed
 points within their maximum, near misses within what five skeletons could give, the round
 can't finish faster than real time, and a cap on how fast packs can be collected). A
 determined cheater can still forge a browser game's requests — sanity-check the top entries
@@ -150,16 +166,40 @@ before awarding prizes.
 Mobile numbers are never returned by the public leaderboard, only by the admin export. Make
 sure the campaign's privacy notice covers collecting them.
 
-## Customising
+## Re-skinning for a vendor
 
-Everything tunable lives in [`js/config.js`](js/config.js):
+1. Copy `vendors/spooky` to `vendors/<new-id>` (lowercase letters, digits and `-`).
+2. Edit `vendors/<new-id>/vendor.json`:
 
-- `BRAND` — game name and the brand/tagline printed on the treat bags.
-- `PRODUCTS` — the five treat flavours (name + colours). The pack labels are drawn
-  in code; to use real pack artwork, add images (e.g. `assets/packs/red.png`, portrait ~5:7)
-  and list them in `PACK_ART`.
-- `RULES`, `SCORING` — round length, lives, points. If you change scoring, update the matching
-  `RULES` constant at the top of `server.js` so validation agrees.
+   ```jsonc
+   {
+     "title": ["ACME", "MAZE MADNESS"],            // two-line logo
+     "logo": "logo.png",                           // optional image in the same folder, or null
+     "tagline": ["COLLECT.", "SURVIVE.", "WIN."],
+     "colors": { "primary": "#ff8a1f", "secondary": "#7dff3a" },
+     "item": { "one": "chocolate bar", "many": "chocolate bars", "shape": "box" },  // bag | can | box | coin | gift
+     "label": { "brand": "ACME", "tagline": "CHOCOLATE" },   // printed on the drawn items
+     "items": [                                    // exactly five kinds
+       { "name": "Milk", "color": "#7c4a2d", "accent": "#fde68a", "image": null }
+       // … four more; "image": "milk.png" uses real product artwork instead of the drawn label
+     ],
+     "prizes": { "daily": "…", "weekly": "…", "final": "…" }
+   }
+   ```
+
+3. **Pitch it:** open `https://<your-server>/?vendor=<new-id>` — every vendor folder on the
+   server works as a live demo link with its own leaderboard.
+4. **Sell it:** for the buyer's own deployment set `VENDOR=<new-id>` in the server `.env`.
+
+If a vendor file has a mistake the browser console says exactly what (e.g. "items must list
+exactly 5 collectibles") and the game falls back to the default skin.
+
+## Tuning the game
+
+Gameplay settings live in [`js/config.js`](js/config.js) and apply to every vendor:
+
+- `RULES`, `SCORING` — round length, lives, points. The server imports this same file, so
+  validation always matches.
 - `MONSTERS` — speed and how aggressively each one chases the player.
 - `MAZE` — maze size for portrait (phones) and landscape (desktop) layouts.
 
@@ -167,7 +207,9 @@ Everything tunable lives in [`js/config.js`](js/config.js):
 
 ```
 index.html, css/style.css   UI: HUD, menus, rules, leaderboard, game-over form
-js/main.js                  UI flow and wiring
+js/main.js                  UI flow and wiring (applies the vendor skin)
+js/vendor.js                Loads and validates vendors/<id>/vendor.json
+vendors/<id>/               One folder per vendor skin
 js/game.js                  Game loop, rules, scoring, camera
 js/maze.js                  Maze generation (braided so there are escape loops) + BFS
 js/world.js                 Builds the dungeon from KayKit pieces, lights, portal, decor

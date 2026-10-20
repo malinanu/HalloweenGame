@@ -1,5 +1,5 @@
 // Scoring and ranking rules shared by the browser game and server.js (keep it DOM-free).
-import { SCORING, RULES, PRODUCTS, MONSTERS } from './config.js';
+import { SCORING, RULES, MONSTERS, ITEM_SLOTS, DEFAULT_VENDOR } from './config.js';
 
 export function comboMultiplier(streak) {
   return Math.min(SCORING.comboMax, 1 + SCORING.comboStep * Math.max(0, streak - 1));
@@ -16,7 +16,7 @@ export function packScore(streak, ageSec) {
 export function totalScore(b) {
   return b.packPoints
     + b.nearMisses * SCORING.nearMiss
-    + b.sets * SCORING.flavourSet
+    + b.sets * SCORING.fullSet
     + b.survivedSec * SCORING.perSecondSurvived
     + (b.reason === 'time' ? b.livesLeft * SCORING.perLifeLeft : 0);
 }
@@ -35,12 +35,15 @@ export function normalizeMobile(raw) {
 
 export const mobileTag = (phone) => `••${String(phone).slice(-3)}`;
 
-// One entry per mobile number (their best), ranked. `since` filters by submission time.
-export function rankBoard(entries, since = 0) {
+// Entries saved before vendors existed belong to the default vendor.
+export const vendorOf = (e) => e.vendor || DEFAULT_VENDOR;
+
+// One entry per mobile number (their best) for one vendor, ranked. `since` filters by submission time.
+export function rankBoard(entries, since = 0, vendor = DEFAULT_VENDOR) {
   const best = new Map();
   const latestName = new Map();
   for (const e of entries) {
-    if (!e.phone) continue; // legacy/test entries without a mobile number
+    if (!e.phone || vendorOf(e) !== vendor) continue; // skip legacy entries without a mobile number
     const prev = latestName.get(e.phone);
     if (!prev || e.ts > prev.ts) latestName.set(e.phone, e);
     if (e.ts < since) continue;
@@ -58,8 +61,8 @@ export function checkBreakdown(b) {
   if (b.reason !== 'time' && b.reason !== 'caught') return 'bad reason';
   const fc = b.flavourCounts;
   if (!fc || typeof fc !== 'object') return 'bad flavours';
-  const counts = PRODUCTS.map((p) => fc[p.id]);
-  if (!counts.every((n) => Number.isInteger(n) && n >= 0) || Object.keys(fc).length !== PRODUCTS.length) return 'bad flavours';
+  const counts = ITEM_SLOTS.map((id) => fc[id]);
+  if (!counts.every((n) => Number.isInteger(n) && n >= 0) || Object.keys(fc).length !== ITEM_SLOTS.length) return 'bad items';
   if (counts.reduce((a, n) => a + n, 0) !== b.packs) return 'packs mismatch';
   if (b.sets !== Math.min(...counts)) return 'sets mismatch';
   if (b.packPoints !== b.packs * SCORING.perPack + b.comboPoints + b.speedPoints) return 'pack points mismatch';

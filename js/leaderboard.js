@@ -1,8 +1,10 @@
 import { API_BASE } from './config.js';
 import { rankBoard, normalizeMobile, mobileTag } from './scoring.js';
+import { VENDOR } from './vendor.js';
 
 // Talks to server.js. When the game is hosted as plain static files (no API),
 // it falls back to a leaderboard stored in this browser so the game still works.
+// Every vendor has its own leaderboard.
 const LOCAL_KEY = 'smr_local_scores';
 let serverAvailable = null;
 
@@ -30,7 +32,7 @@ export async function startSession() {
 export async function fetchBoard(period = 'daily', limit = 10) {
   if (serverAvailable !== false) {
     try {
-      const data = await api(`/leaderboard?period=${period}&limit=${limit}`);
+      const data = await api(`/leaderboard?vendor=${VENDOR.id}&period=${period}&limit=${limit}`);
       serverAvailable = true;
       return { entries: data.entries, source: 'server' };
     } catch {
@@ -43,7 +45,7 @@ export async function fetchBoard(period = 'daily', limit = 10) {
 export async function submitScore(payload) {
   if (serverAvailable !== false && payload.session) {
     try {
-      const data = await api('/scores', { method: 'POST', body: JSON.stringify(payload) });
+      const data = await api('/scores', { method: 'POST', body: JSON.stringify({ ...payload, vendor: VENDOR.id }) });
       return { ...data, source: 'server' };
     } catch (e) {
       if (e.status && e.status < 500) throw e; // validation errors are real
@@ -51,12 +53,12 @@ export async function submitScore(payload) {
     }
   }
   const phone = normalizeMobile(payload.phone);
-  const entry = { ...payload, phone, ts: Date.now() };
+  const entry = { ...payload, vendor: VENDOR.id, phone, ts: Date.now() };
   delete entry.session;
   const list = readLocal();
   list.push(entry);
   writeLocal(list);
-  const mine = rankBoard(list, periodStart('daily')).find((e) => e.phone === phone);
+  const mine = rankBoard(list, periodStart('daily'), VENDOR.id).find((e) => e.phone === phone);
   return { ok: true, rank: mine.rank, best: mine.score, improved: mine.ts === entry.ts, tag: mobileTag(phone), source: 'local' };
 }
 
@@ -72,7 +74,7 @@ function periodStart(period) {
 }
 
 function localBoard(period, limit) {
-  return rankBoard(readLocal(), periodStart(period)).slice(0, limit)
+  return rankBoard(readLocal(), periodStart(period), VENDOR.id).slice(0, limit)
     .map((e) => ({ rank: e.rank, name: e.name, tag: mobileTag(e.phone), score: e.score, packs: e.packs }));
 }
 
@@ -84,8 +86,8 @@ function writeLocal(list) {
 }
 
 export function personalBest() {
-  try { return Number(localStorage.getItem('smr_best')) || 0; } catch { return 0; }
+  try { return Number(localStorage.getItem(`smr_best_${VENDOR.id}`)) || 0; } catch { return 0; }
 }
 export function savePersonalBest(score) {
-  try { if (score > personalBest()) localStorage.setItem('smr_best', String(score)); } catch { /* ignore */ }
+  try { if (score > personalBest()) localStorage.setItem(`smr_best_${VENDOR.id}`, String(score)); } catch { /* ignore */ }
 }

@@ -1,9 +1,11 @@
 import * as THREE from 'three';
-import { RULES, SCORING, PRODUCTS, MONSTERS, MAZE, PLAYER_SPEED, PACK_ART } from './config.js';
+import { RULES, SCORING, MONSTERS, MAZE, PLAYER_SPEED } from './config.js';
+import { VENDOR } from './vendor.js';
+import { itemTexture } from './textures.js';
 import { Maze } from './maze.js';
 import { World } from './world.js';
 import { VFX } from './vfx.js';
-import { Player, Monster, Pack, packLabelTexture } from './entities.js';
+import { Player, Monster, Pack } from './entities.js';
 import { packScore, comboMultiplier, totalScore } from './scoring.js';
 
 const HIT_RADIUS = 1.55;
@@ -31,22 +33,22 @@ export class Game {
     this.time = 0;
     this.shake = 0;
     this.state = 'idle';
-    this.labels = PRODUCTS.map((p) => packLabelTexture(p));
-    this.loadPackArt();
+    this.labels = VENDOR.items.map((it) => itemTexture(it, VENDOR));
+    this.loadItemArt();
 
     addEventListener('resize', () => this.resize());
     this.renderer.setAnimationLoop(() => this.frame());
   }
 
-  // Optional real pack artwork (config PACK_ART) overrides the drawn label.
-  loadPackArt() {
+  // Real product artwork ("image" in the vendor file) replaces the drawn label.
+  loadItemArt() {
     const loader = new THREE.TextureLoader();
-    PRODUCTS.forEach((p, i) => {
-      if (!PACK_ART[p.id]) return;
-      loader.load(PACK_ART[p.id], (t) => {
+    VENDOR.items.forEach((it, i) => {
+      if (!it.image) return;
+      loader.load(it.image, (t) => {
         t.colorSpace = THREE.SRGBColorSpace;
         this.labels[i] = t;
-      }, undefined, () => console.warn(`Pack art not found: ${PACK_ART[p.id]}`));
+      }, undefined, () => console.warn(`Item artwork not found: ${it.image}`));
     });
   }
 
@@ -119,14 +121,15 @@ export class Game {
     const free = this.maze.cells.filter((c) => !taken.has(`${c.x},${c.y}`) && Math.abs(c.x - px) + Math.abs(c.y - py) > 2);
     if (!free.length) return;
     const c = free[Math.floor(Math.random() * free.length)];
-    const counts = PRODUCTS.map((p) => this.packs.filter((k) => k.product === p).length);
+    const items = VENDOR.items;
+    const counts = items.map((p) => this.packs.filter((k) => k.product === p).length);
     const min = Math.min(...counts);
-    const choices = PRODUCTS.map((p, i) => i).filter((i) => counts[i] === min);
+    const choices = items.map((p, i) => i).filter((i) => counts[i] === min);
     const pi = choices[Math.floor(Math.random() * choices.length)];
-    const pack = new Pack(this.world, PRODUCTS[pi], c.x, c.y, this.labels[pi]);
+    const pack = new Pack(this.world, items[pi], c.x, c.y, this.labels[pi], VENDOR.item.shape);
     pack.bornAt = this.playTime || 0;
     this.packs.push(pack);
-    this.vfx.burst(pack.group.position.clone(), { texture: 'star_06_a', count: 6, color: PRODUCTS[pi].color, speed: 2, size: 0.7, up: 1, gravity: 0, life: 0.6 });
+    this.vfx.burst(pack.group.position.clone(), { texture: 'star_06_a', count: 6, color: items[pi].color, speed: 2, size: 0.7, up: 1, gravity: 0, life: 0.6 });
   }
 
   // ------------------------------------------------------------ round flow
@@ -142,8 +145,8 @@ export class Game {
     this.timeLeft = RULES.durationSec;
     this.playTime = 0;          // seconds since GO
     this.collected = 0;
-    this.flavourCounts = Object.fromEntries(PRODUCTS.map((p) => [p.id, 0]));
-    this.sets = 0;              // complete sets of all five flavours
+    this.flavourCounts = Object.fromEntries(VENDOR.items.map((p) => [p.id, 0]));
+    this.sets = 0;              // complete sets of all five kinds of item
     this.packPoints = 0;
     this.comboPoints = 0;
     this.speedPoints = 0;
@@ -329,10 +332,10 @@ export class Game {
     const sets = Math.min(...Object.values(this.flavourCounts));
     if (sets > this.sets) {
       this.sets = sets;
-      this.score += SCORING.flavourSet;
+      this.score += SCORING.fullSet;
       this.audio.bonus();
       this.hooks.haptic?.([20, 30, 20, 30, 40]);
-      this.hooks.toast(`FLAVOUR SET${sets > 1 ? ` ×${sets}` : ''}! +${SCORING.flavourSet}`, 'bonus');
+      this.hooks.toast(`FULL SET${sets > 1 ? ` ×${sets}` : ''}! +${SCORING.fullSet}`, 'bonus');
       this.vfx.play('wavy', this.player.mesh.position.clone().setY(1.2), { scale: 7, fps: 30 });
     }
     this.pendingPacks.push({ t: RULES.packRespawnSec });

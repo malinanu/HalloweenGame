@@ -1,4 +1,4 @@
-// Central game configuration. Tweak rules, scoring and branding here.
+// Central game configuration: rules, scoring, monsters and maze. Branding is per vendor (vendors/).
 export const RULES = {
   durationSec: 60,
   lives: 3,
@@ -20,31 +20,17 @@ export const SCORING = {
   nearMiss: 5,             // a skeleton came close and you got away
   nearMissRadius: 2.8,     // world units (cell = 4); hit radius is 1.55
   nearMissCooldownSec: 3,  // per skeleton
-  flavourSet: 50,          // every complete set of all five flavours (repeatable)
+  fullSet: 50,             // every complete set of all five kinds of item (repeatable)
   perSecondSurvived: 2,
   perLifeLeft: 20,         // only when the timer runs out
 };
 
-// Branding in one place. packBrand/packTagline are printed on the drawn treat bags
-// (real artwork via PACK_ART below replaces the drawn label entirely).
-export const BRAND = {
-  name: 'Spooky Maze Runner',
-  packBrand: 'SPOOKY',
-  packTagline: 'TREATS',
-};
-
-// The five treat flavours. Swap names/colours freely.
-export const PRODUCTS = [
-  { id: 'red',    name: 'Hot & Spicy',   color: '#e3262b', accent: '#ffd23f' },
-  { id: 'yellow', name: 'Cheese',        color: '#f6c514', accent: '#c0392b' },
-  { id: 'green',  name: 'Sour Cream',    color: '#2fb84a', accent: '#fff36b' },
-  { id: 'blue',   name: 'Salted',        color: '#1f6fe0', accent: '#ffe066' },
-  { id: 'purple', name: 'BBQ',           color: '#8e2bd1', accent: '#ff9a3c' },
-];
-
-// Optional real pack artwork (front label), e.g. { red: 'assets/packs/red.png' }.
-// Any product not listed uses the drawn placeholder label.
-export const PACK_ART = {};
+// Vendor branding (name, colours, what players collect, prizes) lives in vendors/<id>/vendor.json.
+// Collectibles are always five kinds, stored as these slots so scoring never depends on a vendor.
+export const ITEM_SLOTS = ['i1', 'i2', 'i3', 'i4', 'i5'];
+export const ITEM_SHAPES = ['bag', 'can', 'box', 'coin', 'gift'];
+export const DEFAULT_VENDOR = 'spooky';
+export const VENDOR_ID = /^[a-z0-9-]{1,40}$/;
 
 // The five characters to avoid (KayKit Skeletons, each with its own personality).
 export const MONSTERS = [

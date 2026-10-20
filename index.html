@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="format-detection" content="telephone=no">
   <title>Spooky Maze Runner</title>
-  <meta name="description" content="Spooky Maze Runner — Halloween maze runner: collect treat bags, dodge the skeletons, top the leaderboard.">
+  <meta name="description" content="Halloween maze runner: collect, dodge the skeletons, top the leaderboard.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Creepster&family=Luckiest+Guy&family=Nunito:wght@600;800&display=swap" rel="stylesheet">
@@ -38,7 +38,7 @@
   <div id="popups"></div>
 
   <header id="top">
-    <h1 class="logo"><span class="o">SPOOKY</span> <span class="g">MAZE RUNNER</span></h1>
+    <h1 class="logo v-title"></h1>
     <div id="hud" class="hidden">
       <div class="pill"><span class="ic">🎃</span><div><small>SCORE</small><b id="hud-score">0</b></div></div>
       <div class="pill" id="pill-time"><span class="ic">⏱️</span><div><small>TIME</small><b id="hud-time">01:00</b></div></div>
@@ -46,7 +46,7 @@
       <button class="round" id="btn-pause" aria-label="Pause">❚❚</button>
       <button class="round" id="btn-sound" aria-label="Toggle sound">🔊</button>
     </div>
-    <div id="flavours" class="hidden" aria-label="Flavours collected"></div>
+    <div id="flavours" class="hidden" aria-label="Items collected"></div>
   </header>
 
   <div id="toast"></div>
@@ -54,7 +54,7 @@
   <!-- Loading -->
   <section id="screen-loading" class="screen show">
     <div class="panel center">
-      <h2 class="logo big"><span class="o">SPOOKY</span><br><span class="g">MAZE RUNNER</span></h2>
+      <div class="v-logo"></div><h2 class="logo big v-title" data-break></h2>
       <div class="bar"><i id="load-bar"></i></div>
       <p class="muted">Summoning skeletons…</p>
     </div>
@@ -63,10 +63,10 @@
   <!-- Start -->
   <section id="screen-start" class="screen">
     <div class="panel">
-      <h2 class="logo big"><span class="o">SPOOKY</span><br><span class="g">MAZE RUNNER</span></h2>
+      <div class="v-logo"></div><h2 class="logo big v-title" data-break></h2>
       <ol class="steps">
         <li><b>Enter</b> the haunted maze.</li>
-        <li><b>Collect</b> as many treat bags as you can.</li>
+        <li><b>Collect</b> as many <span data-v="many"></span> as you can.</li>
         <li><b>Avoid</b> the five skeleton monsters.</li>
         <li><b>Survive</b> until the 60 seconds run out.</li>
         <li><b>Submit</b> your score to the leaderboard.</li>
@@ -79,7 +79,7 @@
         <button class="btn ghost" id="btn-rules">Rules &amp; Prizes</button>
         <button class="btn ghost" id="btn-board">🏆 Leaderboard</button>
       </div>
-      <p class="tagline"><span class="o">COLLECT.</span> <span class="g">SURVIVE.</span> <span class="r">WIN.</span></p>
+      <p class="tagline v-tagline"></p>
     </div>
   </section>
 
@@ -96,8 +96,8 @@
         </div>
         <div class="tut-card">
           <div class="tut-art packs-art" id="tut-packs"></div>
-          <h2 class="title">Collect the packs</h2>
-          <p>Every treat bag is <b id="tut-pack-pts"></b>. Grab them <b>quickly one after another</b> for combo points, and every <b>set of all five flavours</b> earns <b id="tut-five-pts"></b>!</p>
+          <h2 class="title">Collect the <span data-v="many"></span></h2>
+          <p>Every <span data-v="one"></span> is <b id="tut-pack-pts"></b>. Grab them <b>quickly one after another</b> for combo points, and every <b>full set of all five kinds</b> earns <b id="tut-five-pts"></b>!</p>
         </div>
         <div class="tut-card">
           <div class="tut-art"><span class="big-emoji wobble">💀</span></div>
@@ -124,7 +124,7 @@
       <h2 class="title">Game Rules</h2>
       <ul class="rules">
         <li>You have <b>60 seconds</b> and <b>three lives</b>.</li>
-        <li>Treat bags appear throughout the maze — every bag adds points.</li>
+        <li><span data-v="Many"></span> appear throughout the maze — every one adds points.</li>
         <li>Touching a skeleton removes one life.</li>
         <li>The game ends when time runs out or you lose all three lives.</li>
         <li>Submit your final score to the leaderboard. Come back any time to beat it!</li>
@@ -135,9 +135,9 @@
       <div class="flavour-row" id="rules-flavours"></div>
       <h2 class="title">Rewards</h2>
       <ul class="rules">
-        <li>🎁 <b>Daily winners</b> receive prize bundles.</li>
-        <li>🎁 <b>Weekly leaders</b> receive larger gift packs.</li>
-        <li>🏆 <b>Final leaderboard winners</b> receive the main campaign prizes.</li>
+        <li>🎁 <span id="prize-daily"></span></li>
+        <li>🎁 <span id="prize-weekly"></span></li>
+        <li>🏆 <span id="prize-final"></span></li>
       </ul>
       <button class="btn" data-back>Back</button>
     </div>
