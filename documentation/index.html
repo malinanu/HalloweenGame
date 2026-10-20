@@ -48,8 +48,10 @@
   <a href="#leaderboard">Leaderboard server</a>
   <a href="#winners">Exporting winners</a>
   <a href="#deploy">Deploying</a>
+  <a href="#platforms">YouTube &amp; game portals</a>
   <a href="#browsers">Browser support</a>
   <a href="#faq">FAQ &amp; troubleshooting</a>
+  <a href="#licence">Licence</a>
   <a href="#credits">Credits &amp; licences</a>
   <a href="#changelog">Changelog</a>
 </nav>
@@ -242,6 +244,21 @@ No browser game can be made completely tamper-proof — check the top entries be
 <p>The game can be embedded in a page with an iframe:</p>
 <pre>&lt;iframe src="https://your-site/?vendor=acme" style="width:100%;height:100vh;border:0" allow="fullscreen; screen-wake-lock"&gt;&lt;/iframe&gt;</pre>
 
+<h2 id="platforms">YouTube Playables &amp; game portals</h2>
+<p>Besides your own website, the game can be published on platforms that host HTML5 games. Each has its own build,
+made from the source package with Node.js 18+ (no installs needed):</p>
+<table>
+  <tr><th>Platform</th><th>Build command</th><th>What the build does</th></tr>
+  <tr><td>YouTube Playables</td><td><code>node tools/package.js --target youtube</code></td><td>Adds the Playables SDK as the first script; reports first frame and game-ready in the right order; saves progress with YouTube's cloud save; pauses when YouTube asks; follows YouTube's sound setting; sends the final score to YouTube. No server, no phone numbers, no prize text, no external requests.</td></tr>
+  <tr><td>CrazyGames</td><td><code>node tools/package.js --target crazygames</code></td><td>Adds the CrazyGames SDK v3; reports gameplay start/stop; shows a mid-game ad between rounds (music paused during the ad).</td></tr>
+  <tr><td>GameDistribution</td><td><code>node tools/package.js --target gamedistribution --gd-id YOUR_GAME_ID</code></td><td>Loads the GameDistribution SDK with your game id; shows an ad between rounds.</td></tr>
+</table>
+<p>Add <code>--skin &lt;id&gt;</code> to build a different skin (one skin per platform build). Builds are written to <code>dist/</code> as zips
+with <code>index.html</code> at the root, ready to upload. The builder refuses to finish if it finds any external address in the code other than the platform's own SDK.</p>
+<div class="note">Each platform reviews games before publishing and has its own developer sign-up (YouTube Playables is by
+application/onboarding). Check each platform's current requirements before you submit. You can also run <code>npm run package -- --target youtube</code>.</div>
+<p>While testing on your own computer you can preview a platform build's behaviour with <code>?platform=youtube</code> (or <code>crazygames</code>, <code>gamedistribution</code>) on the normal web version.</p>
+
 <h2 id="browsers">Browser support</h2>
 <p>Latest Chrome, Edge, Firefox and Safari on desktop; Chrome and Samsung Internet on Android; Safari on iOS 15+. WebGL is required. Add <code>?low</code> to the address to force the light graphics mode.</p>
 
@@ -252,8 +269,16 @@ No browser game can be made completely tamper-proof — check the top entries be
 <p><b>Day/week resets at the wrong time.</b> — set <code>TZ_OFFSET_MIN</code> for your time zone.</p>
 <p><b>Can I change the monsters?</b> — the skeleton models come from <code>assets/models/skeletons/</code>; any glTF character using the same rig works. The cat and bats are built in <code>js/targets.js</code>.</p>
 
+<h2 id="licence">Licence</h2>
+<p>Your rights depend on the licence you bought — see <code>LICENSE.txt</code> in the package. In short:</p>
+<ul>
+  <li><b>Standard:</b> one end product (one game, campaign or website) for you or one client. Modify and re-skin freely, publish it anywhere (web, portals, YouTube), earn from it.</li>
+  <li><b>Extended:</b> unlimited end products for you and your clients, and you may offer the game as a hosted service (e.g. branded promo games for companies).</li>
+  <li>Neither licence allows reselling or giving away the source code itself.</li>
+</ul>
+
 <h2 id="credits">Credits &amp; licences</h2>
-<p>Game code © 3logiq, licensed to you under your Envato licence. Third-party components (all allow commercial use and redistribution):</p>
+<p>Game code © 3logiq, licensed to you under the licence you bought (<code>LICENSE.txt</code>). Third-party components (all allow commercial use and redistribution):</p>
 <table>
   <tr><th>Component</th><th>Author</th><th>Licence</th></tr>
   <tr><td>three.js r170</td><td>three.js authors</td><td>MIT — <code>vendor/three/LICENSE</code></td></tr>

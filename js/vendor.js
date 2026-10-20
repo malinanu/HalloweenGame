@@ -1,6 +1,8 @@
 // Loads the vendor skin (vendors/<id>/vendor.json): name, colours, collectibles, prizes.
 // Pick order: ?vendor=<id> in the URL (pitch demos) -> server default (VENDOR env) -> DEFAULT_VENDOR.
 import { API_BASE, DEFAULT_VENDOR, ITEM_SLOTS, ITEM_SHAPES, VENDOR_ID } from './config.js';
+import { PLATFORM_CONFIG } from './platform-config.js';
+import { platform } from './platform.js';
 
 export let VENDOR = null;
 
@@ -8,7 +10,8 @@ export async function loadVendor() {
   const asked = new URLSearchParams(location.search).get('vendor');
   let id = asked && VENDOR_ID.test(asked) ? asked : null;
   if (asked && !id) console.error(`Ignoring invalid vendor id "${asked}"`);
-  if (!id) {
+  if (PLATFORM_CONFIG.vendor) id = PLATFORM_CONFIG.vendor; // single-skin platform builds
+  if (!id && platform.caps.server) {
     try {
       const r = await fetch(`${API_BASE}/vendor`);
       if (r.ok) id = (await r.json()).id;
@@ -18,6 +21,7 @@ export async function loadVendor() {
     if (!candidate || !VENDOR_ID.test(candidate)) continue;
     try {
       VENDOR = await fetchVendor(candidate);
+      if (!platform.caps.phone) VENDOR.leaderboard.requirePhone = false;
       return VENDOR;
     } catch (err) {
       console.error(`Vendor "${candidate}" could not be loaded: ${err.message}`);

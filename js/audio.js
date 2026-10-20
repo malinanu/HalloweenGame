@@ -1,8 +1,11 @@
 // Tiny WebAudio synth: spooky music loop + sound effects. No audio files needed.
+import { platform } from './platform.js';
+
 export class Audio {
   constructor() {
     this.ctx = null;
-    this.muted = safeGet('smr_muted') === '1';
+    this.muted = false;   // the player's own sound toggle (loaded after platform.init)
+    this.blocked = false; // the platform has sound off (e.g. YouTube's mute)
     this.musicOn = false;
     this.step = 0;
   }
@@ -13,18 +16,32 @@ export class Audio {
     if (!AC) return;
     this.ctx = new AC();
     this.master = this.ctx.createGain();
-    this.master.gain.value = this.muted ? 0 : 0.8;
+    this.master.gain.value = this.silent ? 0 : 0.8;
     this.master.connect(this.ctx.destination);
     this.musicGain = this.ctx.createGain();
     this.musicGain.gain.value = 0.32;
     this.musicGain.connect(this.master);
   }
 
+  get silent() { return this.muted || this.blocked; }
+
+  load() { this.muted = platform.store.get('smr_muted') === '1'; this.apply(); }
+
   setMuted(m) {
     this.muted = m;
-    safeSet('smr_muted', m ? '1' : '0');
-    if (this.master) this.master.gain.setTargetAtTime(m ? 0 : 0.8, this.ctx.currentTime, 0.05);
+    platform.store.set('smr_muted', m ? '1' : '0');
+    this.apply();
   }
+
+  // the platform's own sound setting always wins over the in-game toggle
+  setBlocked(b) { this.blocked = b; this.apply(); }
+
+  apply() {
+    if (this.master) this.master.gain.setTargetAtTime(this.silent ? 0 : 0.8, this.ctx.currentTime, 0.05);
+  }
+
+  suspend() { this.ctx?.suspend?.(); }
+  resume() { if (this.ctx?.state === 'suspended') this.ctx.resume(); }
 
   tone(freq, dur, { type = 'sine', vol = 0.3, at = 0, slide = 0, dest } = {}) {
     if (!this.ctx) return;
@@ -136,5 +153,3 @@ export class Audio {
   }
 }
 
-function safeGet(k) { try { return localStorage.getItem(k); } catch { return null; } }
-function safeSet(k, v) { try { localStorage.setItem(k, v); } catch { /* ignore */ } }

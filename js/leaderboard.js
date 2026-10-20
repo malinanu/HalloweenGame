@@ -1,25 +1,22 @@
 import { API_BASE } from './config.js';
 import { rankBoard, normalizeMobile, mobileTag } from './scoring.js';
 import { VENDOR } from './vendor.js';
+import { platform } from './platform.js';
 
 // Talks to server.js. When the game is hosted as plain static files (no API),
 // it falls back to a leaderboard stored in this browser so the game still works.
 // Every vendor has its own leaderboard.
 const LOCAL_KEY = 'smr_local_scores';
-let serverAvailable = null;
+let serverAvailable = platform.caps.server ? null : false; // platform builds never call a server
 
 // Anonymous per-browser id: identifies a player when the vendor doesn't collect phone numbers.
 export function deviceId() {
-  try {
-    let id = localStorage.getItem('smr_device');
-    if (!id) {
-      id = (crypto.randomUUID?.() || `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`).replace(/-/g, '').slice(0, 24);
-      localStorage.setItem('smr_device', id);
-    }
-    return id;
-  } catch {
-    return `tmp${Math.random().toString(36).slice(2, 14)}`;
+  let id = platform.store.get('smr_device');
+  if (!id) {
+    id = (crypto.randomUUID?.() || `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`).replace(/-/g, '').slice(0, 24);
+    platform.store.set('smr_device', id);
   }
+  return id;
 }
 
 async function api(path, opts = {}) {
@@ -33,6 +30,7 @@ async function api(path, opts = {}) {
 }
 
 export async function startSession() {
+  if (!platform.caps.server) return null;
   try {
     const { session } = await api('/session', { method: 'POST', body: '{}' });
     serverAvailable = true;
@@ -93,15 +91,15 @@ function localBoard(period, limit) {
 }
 
 function readLocal() {
-  try { return JSON.parse(localStorage.getItem(LOCAL_KEY)) || []; } catch { return []; }
+  try { return JSON.parse(platform.store.get(LOCAL_KEY)) || []; } catch { return []; }
 }
 function writeLocal(list) {
-  try { localStorage.setItem(LOCAL_KEY, JSON.stringify(list.slice(-500))); } catch { /* ignore */ }
+  platform.store.set(LOCAL_KEY, JSON.stringify(list.slice(-200)));
 }
 
 export function personalBest() {
-  try { return Number(localStorage.getItem(`smr_best_${VENDOR.id}`)) || 0; } catch { return 0; }
+  return Number(platform.store.get(`smr_best_${VENDOR.id}`)) || 0;
 }
 export function savePersonalBest(score) {
-  try { if (score > personalBest()) localStorage.setItem(`smr_best_${VENDOR.id}`, String(score)); } catch { /* ignore */ }
+  if (score > personalBest()) platform.store.set(`smr_best_${VENDOR.id}`, String(score));
 }

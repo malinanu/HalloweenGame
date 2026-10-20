@@ -76,7 +76,7 @@
       <p class="controls muted">Click the monsters · keys 1–9 hit the graves · P to pause</p>
       <div class="row">
         <button class="btn ghost" id="btn-howto">❓ How to play</button>
-        <button class="btn ghost" id="btn-rules">Rules &amp; Prizes</button>
+        <button class="btn ghost" id="btn-rules">Rules &amp; <span class="prizes-only">Prizes</span><span class="no-prizes">Scoring</span></button>
         <button class="btn ghost" id="btn-board">🏆 Leaderboard</button>
       </div>
       <p class="tagline v-tagline"></p>
@@ -132,8 +132,8 @@
       <div class="score-table" id="rules-scoring"></div>
       <p class="muted small">Ties are ranked by most smashes, then most lives left, then longest survival, then whoever scored first.</p>
       <div class="flavour-row" id="rules-flavours"></div>
-      <h2 class="title">Rewards</h2>
-      <ul class="rules">
+      <h2 class="title prizes-only">Rewards</h2>
+      <ul class="rules prizes-only">
         <li>🎁 <span id="prize-daily"></span></li>
         <li>🎁 <span id="prize-weekly"></span></li>
         <li>🏆 <span id="prize-final"></span></li>

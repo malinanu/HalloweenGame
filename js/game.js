@@ -355,6 +355,7 @@ export class Game {
 
     this.updateCamera(dt);
     this.renderer.render(this.scene, this.camera);
+    if (!this.firstFrameDone) { this.firstFrameDone = true; this.hooks.firstFrame?.(); }
   }
 
   updateRound(dt) {
