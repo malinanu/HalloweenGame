@@ -2,7 +2,7 @@
 export class Audio {
   constructor() {
     this.ctx = null;
-    this.muted = safeGet('maliban_muted') === '1';
+    this.muted = safeGet('smr_muted') === '1';
     this.musicOn = false;
     this.step = 0;
   }
@@ -22,7 +22,7 @@ export class Audio {
 
   setMuted(m) {
     this.muted = m;
-    safeSet('maliban_muted', m ? '1' : '0');
+    safeSet('smr_muted', m ? '1' : '0');
     if (this.master) this.master.gain.setTargetAtTime(m ? 0 : 0.8, this.ctx.currentTime, 0.05);
   }
 

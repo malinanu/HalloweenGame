@@ -1,19 +1,20 @@
-# 🎃 Maliban Savoury Maze
+# 🎃 Spooky Maze Runner
 
-A Halloween maze-runner web game for the Maliban Savoury campaign. Players enter a haunted
-dungeon maze, collect Maliban savoury packs, dodge five skeleton monsters and submit their
-score to a daily / weekly / all-time leaderboard to compete for Maliban gifts.
+A Halloween maze-runner web game. Players enter a haunted dungeon maze, collect treat bags,
+dodge five skeleton monsters and submit their score to a daily / weekly / all-time
+leaderboard to compete for prizes. Brand-neutral: the name and the label printed on the bags
+are set in `BRAND` in [`js/config.js`](js/config.js).
 
 Runs in any modern browser on phones, tablets and desktops (Three.js / WebGL, no build step).
 
 ## How to play
 
 1. Enter the maze (through the green portal).
-2. Collect as many Maliban savoury packs as possible.
+2. Collect as many treat bags as possible.
 3. Avoid the five characters (Warrior, Rogue, Mage, Minion and the Ghost).
 4. Survive until time runs out.
 5. Submit your score to the leaderboard.
-6. Compete to win Maliban gifts.
+6. Compete to win prizes.
 
 **Controls:** arrow keys / WASD on desktop · `P` / `Esc` to pause.
 
@@ -92,14 +93,14 @@ put it behind HTTPS.
 rsyncs the files over SSH, (re)starts the app with PM2 and checks it responds.
 
 **1. On CloudPanel:** *Add Site → Create a Node.js Site*, pick **Node.js 24** and an **App Port**
-(e.g. `3087` — pick one no other app uses; check with `ss -tlnp`). Note the site user and the site root, e.g. `/home/maliban/htdocs/game.example.com`.
+(e.g. `3087` — pick one no other app uses; check with `ss -tlnp`). Note the site user and the site root, e.g. `/home/spooky/htdocs/game.example.com`.
 Enable Let's Encrypt for HTTPS.
 
 **2. SSH key:** generate a key pair just for deploys and add the public key to the site user
 (CloudPanel → Site → *Settings / SSH Keys*, or append it to `~/.ssh/authorized_keys` of the site user):
 
 ```bash
-ssh-keygen -t ed25519 -C "github-deploy" -f maliban_deploy -N ""
+ssh-keygen -t ed25519 -C "github-deploy" -f spooky_deploy -N ""
 ssh-keyscan -p 22 your.server.ip      # output -> SSH_KNOWN_HOSTS
 ```
 
@@ -107,10 +108,10 @@ ssh-keyscan -p 22 your.server.ip      # output -> SSH_KNOWN_HOSTS
 
 | Secret | Example | Required |
 | --- | --- | --- |
-| `SSH_PRIVATE_KEY` | contents of `maliban_deploy` | yes |
+| `SSH_PRIVATE_KEY` | contents of `spooky_deploy` | yes |
 | `SSH_HOST` | `203.0.113.10` | yes |
-| `SSH_USER` | `maliban` (the CloudPanel site user) | yes |
-| `DEPLOY_PATH` | `/home/maliban/htdocs/game.example.com` | yes |
+| `SSH_USER` | `spooky` (the CloudPanel site user) | yes |
+| `DEPLOY_PATH` | `/home/spooky/htdocs/game.example.com` | yes |
 | `APP_PORT` | `3087` — must match the App Port set in CloudPanel | default `3087` |
 | `SSH_PORT` | `22` | default `22` |
 | `SSH_KNOWN_HOSTS` | output of `ssh-keyscan` | recommended (otherwise the host key is trusted on first use) |
@@ -153,7 +154,8 @@ sure the campaign's privacy notice covers collecting them.
 
 Everything tunable lives in [`js/config.js`](js/config.js):
 
-- `PRODUCTS` — the five Maliban savoury products (name + colours). The pack labels are drawn
+- `BRAND` — game name and the brand/tagline printed on the treat bags.
+- `PRODUCTS` — the five treat flavours (name + colours). The pack labels are drawn
   in code; to use real pack artwork, add images (e.g. `assets/packs/red.png`, portrait ~5:7)
   and list them in `PACK_ART`.
 - `RULES`, `SCORING` — round length, lives, points. If you change scoring, update the matching

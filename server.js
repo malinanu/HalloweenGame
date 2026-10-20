@@ -1,4 +1,4 @@
-// Maliban Savoury Maze — static file server + leaderboard API. Zero dependencies.
+// Spooky Maze Runner — static file server + leaderboard API. Zero dependencies.
 //   node server.js            (PORT=8080, DATA_DIR=./data, TZ_OFFSET_MIN=330 by default)
 const http = require('http');
 const fs = require('fs');
@@ -145,7 +145,7 @@ async function api(req, res, url) {
       const cols = ['rank', 'name', 'mobile', 'score', 'packs', 'packPoints', 'comboPoints', 'speedPoints', 'nearMisses', 'sets', 'survivedSec', 'livesLeft', 'reason', 'submittedAt'];
       return send(res, 200, toCsv([cols, ...top.map((e) => cols.map((c) => e[c]))], [cols.indexOf('name')]), {
         'Content-Type': 'text/csv; charset=utf-8',
-        'Content-Disposition': `attachment; filename="maliban-${period}-top${limit}.csv"`,
+        'Content-Disposition': `attachment; filename="spooky-maze-${period}-top${limit}.csv"`,
       });
     }
     return send(res, 200, { period, since: new Date(periodStart(period)).toISOString(), entries: top });
@@ -189,5 +189,5 @@ function serveStatic(req, res, url) {
     } else {
       send(res, 405, { error: 'Method not allowed' });
     }
-  }).listen(PORT, () => console.log(`Maliban Savoury Maze running at http://localhost:${PORT}`));
+  }).listen(PORT, () => console.log(`Spooky Maze Runner running at http://localhost:${PORT}`));
 })();

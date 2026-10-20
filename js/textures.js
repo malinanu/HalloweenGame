@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { BRAND } from './config.js';
 
 function canvas(w, h) {
   const c = document.createElement('canvas');
@@ -30,10 +31,11 @@ export function packLabelTexture(product) {
   roundRect(g, -110, -30, 220, 60, 18);
   g.fill();
   g.fillStyle = '#d0121b';
-  g.font = 'bold 44px "Luckiest Guy", "Arial Black", sans-serif';
   g.textAlign = 'center';
   g.textBaseline = 'middle';
-  g.fillText('MALIBAN', 0, 3);
+  let size = 44; // shrink long brand names to fit the banner
+  do { g.font = `bold ${size}px "Luckiest Guy", "Arial Black", sans-serif`; } while (g.measureText(BRAND.packBrand).width > 200 && --size > 16);
+  g.fillText(BRAND.packBrand, 0, 3);
   g.restore();
 
   // chips
@@ -69,7 +71,7 @@ export function packLabelTexture(product) {
   });
   g.fillStyle = 'rgba(255,255,255,0.85)';
   g.font = 'bold 16px Arial, sans-serif';
-  g.fillText('SAVOURY', 128, 128);
+  g.fillText(BRAND.packTagline, 128, 128);
 
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;

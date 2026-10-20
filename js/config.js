@@ -25,7 +25,15 @@ export const SCORING = {
   perLifeLeft: 20,         // only when the timer runs out
 };
 
-// The five Maliban savoury products. Swap names/colours to match the real range.
+// Branding in one place. packBrand/packTagline are printed on the drawn treat bags
+// (real artwork via PACK_ART below replaces the drawn label entirely).
+export const BRAND = {
+  name: 'Spooky Maze Runner',
+  packBrand: 'SPOOKY',
+  packTagline: 'TREATS',
+};
+
+// The five treat flavours. Swap names/colours freely.
 export const PRODUCTS = [
   { id: 'red',    name: 'Hot & Spicy',   color: '#e3262b', accent: '#ffd23f' },
   { id: 'yellow', name: 'Cheese',        color: '#f6c514', accent: '#c0392b' },

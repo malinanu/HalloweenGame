@@ -107,6 +107,8 @@ jobs:
           export PATH="$TOOLS/node_modules/.bin:$PATH"
 
           mkdir -p data
+          # free the port from the app's previous PM2 name (renamed in the rebrand); no-op afterwards
+          pm2 delete maliban-savoury-maze >/dev/null 2>&1 || true
           PORT="$APP_PORT" pm2 startOrReload ecosystem.config.cjs --update-env
           pm2 save
           REMOTE

@@ -3,5 +3,6 @@ data/
 .DS_Store
 .env
 maliban_deploy*
+spooky_deploy*
 *.pem
 *.key

@@ -3,7 +3,7 @@ import { rankBoard, normalizeMobile, mobileTag } from './scoring.js';
 
 // Talks to server.js. When the game is hosted as plain static files (no API),
 // it falls back to a leaderboard stored in this browser so the game still works.
-const LOCAL_KEY = 'maliban_local_scores';
+const LOCAL_KEY = 'smr_local_scores';
 let serverAvailable = null;
 
 async function api(path, opts = {}) {
@@ -84,8 +84,8 @@ function writeLocal(list) {
 }
 
 export function personalBest() {
-  try { return Number(localStorage.getItem('maliban_best')) || 0; } catch { return 0; }
+  try { return Number(localStorage.getItem('smr_best')) || 0; } catch { return 0; }
 }
 export function savePersonalBest(score) {
-  try { if (score > personalBest()) localStorage.setItem('maliban_best', String(score)); } catch { /* ignore */ }
+  try { if (score > personalBest()) localStorage.setItem('smr_best', String(score)); } catch { /* ignore */ }
 }

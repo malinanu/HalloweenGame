@@ -103,7 +103,7 @@ function releaseWakeLock() {
 }
 
 // ---------------------------------------------------------------- tutorial
-const TUT_KEY = 'maliban_tutorial_seen';
+const TUT_KEY = 'smr_tutorial_seen';
 const tutCards = [...document.querySelectorAll('.tut-card')];
 let tutIndex = 0;
 let tutThen = null; // what to do when the tutorial closes
@@ -192,8 +192,8 @@ function gameOver(result) {
   $('#btn-submit').disabled = false;
   $('#submit-form').classList.toggle('hidden', result.score <= 0);
   try {
-    $('#in-name').value = localStorage.getItem('maliban_name') || '';
-    $('#in-phone').value = localStorage.getItem('maliban_phone') || '';
+    $('#in-name').value = localStorage.getItem('smr_name') || '';
+    $('#in-phone').value = localStorage.getItem('smr_phone') || '';
   } catch { /* ignore */ }
   show('screen-over');
 }
@@ -210,7 +210,7 @@ $('#submit-form').addEventListener('submit', async (e) => {
   msg.textContent = 'Submitting…';
   msg.className = 'msg';
   try {
-    try { localStorage.setItem('maliban_name', name); localStorage.setItem('maliban_phone', phone); } catch { /* ignore */ }
+    try { localStorage.setItem('smr_name', name); localStorage.setItem('smr_phone', phone); } catch { /* ignore */ }
     const r = await submitScore({ session, name, phone, ...lastResult });
     submitted = true;
     msg.textContent = r.improved
@@ -242,8 +242,8 @@ async function renderBoard() {
 }
 function savedPlayer() {
   try {
-    const name = localStorage.getItem('maliban_name');
-    const phone = normalizeMobile(localStorage.getItem('maliban_phone'));
+    const name = localStorage.getItem('smr_name');
+    const phone = normalizeMobile(localStorage.getItem('smr_phone'));
     return name && phone ? { name, tag: mobileTag(phone) } : null;
   } catch { return null; }
 }
